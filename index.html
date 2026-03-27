@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>우리말 수호대 - 맞춤법 배틀 (최종판)</title>
+    <title>우리말 수호대 - 맞춤법 배틀 (최종 완성판)</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -91,6 +91,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
+        // 예전 방식 1문항 2보기 데이터 완벽 복구
         const ALL_QUIZ_DATA = [
             { q: "오늘이 ( )이야?", options: ["며칠", "몇일"], a: "며칠", desc: "'몇일'이라는 단어는 없습니다. 항상 '며칠'로 씁니다." },
             { q: "이제 ( )?", options: ["어떡해", "어떻해"], a: "어떡해", desc: "'어떠하게 해'가 줄어든 말로 '어떡해'가 맞습니다." },
@@ -234,14 +235,12 @@
                             setIsTransitioning(true);
                             setTimeout(() => setGameState('RESULT'), 1500);
                         } else {
-                            moveToNext(0); 
+                            moveToNext(0); // 정답 시 즉시 다음
                         }
                     } else {
-                        setFeedback(prev => ({ ...prev, [player]: 'wrong' }));
-                        const otherPlayer = player === 'p1' ? 'p2' : 'p1';
-                        if (feedback[otherPlayer] === 'wrong') {
-                            moveToNext(1200);
-                        }
+                        // 상대가 오답을 눌렀을 때의 학습 효과 로직: 둘 다 틀림 처리 후 팝업 호출 대기
+                        setFeedback({ p1: player === 'p1' ? 'wrong' : 'show_desc', p2: player === 'p2' ? 'wrong' : 'show_desc' });
+                        moveToNext(3500); // 정답 공개 팝업을 읽을 수 있도록 대기 시간 늘림
                     }
                 }
             };
@@ -264,7 +263,7 @@
             };
 
             return (
-                // 하단 플로팅 버튼을 위해 밑에 약간의 여백(pb-20)을 줌. 상단 패딩 제거.
+                // 하단 플로팅 버튼을 위해 밑에 약간의 여백(pb-20)을 줌. 상단 패딩 제거하여 최적화.
                 <div className="min-h-screen w-full p-4 pb-20 relative flex flex-col items-center max-w-screen-2xl mx-auto">
                     
                     <FloatingButtons gameState={gameState} setGameState={setGameState} darkMode={darkMode} setDarkMode={setDarkMode} />
@@ -299,6 +298,22 @@
                                 </p>
                             </div>
                          </div>
+                    )}
+
+                    {/* 2P 오답 시 전체 정답 팝업 (학습효과 극대화) */}
+                    {(feedback.p1 === 'wrong' || feedback.p2 === 'wrong') && gameConfig.mode === '2P' && (
+                        <div className="absolute inset-0 bg-black/70 z-[100] flex items-center justify-center p-6 animate__animated animate__fadeIn">
+                            <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-2xl border-t-8 border-red-500 text-center relative">
+                                <div className="text-4xl mb-4 text-red-500 font-bold">아앗! 오답입니다 😥</div>
+                                <h3 className="text-3xl md:text-5xl leading-tight mb-8 text-gray-800 dark:text-gray-100">Q. "{questions[currentIdx].q}"</h3>
+                                <div className="bg-teal-50 dark:bg-teal-900/30 p-4 rounded-2xl mb-8 text-2xl md:text-3xl text-teal-600 font-bold">
+                                    정답: {questions[currentIdx].a}
+                                </div>
+                                <p className="text-xl md:text-2xl font-medium leading-relaxed bg-gray-100 dark:bg-gray-700 p-6 rounded-2xl">
+                                    💡 {questions[currentIdx].desc}
+                                </p>
+                            </div>
+                        </div>
                     )}
 
                     {/* 화면 1: 설정 */}
@@ -361,8 +376,8 @@
                                             <span className="text-2xl md:text-3xl font-bold text-teal-600">점수: {scores.p1}</span>
                                         </div>
 
-                                        {/* 1P 질문 박스: 그라데이션 적용으로 보기버튼과 구분 */}
-                                        <div className="bg-gradient-to-br from-amber-100 to-orange-50 dark:from-gray-700 dark:to-gray-800 p-8 md:p-14 rounded-3xl shadow-md mb-8 text-center w-full max-w-4xl border border-orange-200/50">
+                                        {/* 1P 질문 박스: 그라데이션 적용으로 보기버튼과 확실히 구분 */}
+                                        <div className="bg-gradient-to-br from-orange-100 to-amber-50 dark:from-gray-700 dark:to-gray-800 p-8 md:p-14 rounded-3xl shadow-md mb-8 text-center w-full max-w-4xl border border-orange-200/50">
                                             <h3 className="text-4xl md:text-5xl lg:text-6xl leading-tight text-gray-900 dark:text-white font-bold">Q. "{currentQ.q}"</h3>
                                         </div>
 
@@ -394,7 +409,7 @@
                                 return (
                                     <div className="flex-1 w-full flex flex-col pt-4 max-w-screen-2xl">
                                         
-                                        {/* 상단 줄다리기 영역: 얇고 심플하게 박스화 */}
+                                        {/* 상단 줄다리기 영역: 텍스트를 빼고 깔끔한 바 형태로 변경 */}
                                         <div className="w-full md:w-3/4 mx-auto h-12 md:h-14 bg-white dark:bg-gray-800 rounded-full shadow-inner border border-gray-200 dark:border-gray-700 relative mb-4 overflow-hidden flex items-center">
                                             <div className="absolute inset-0 tug-rope-bg opacity-30"></div>
                                             <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-gray-400 z-0"></div>
