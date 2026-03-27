@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우리말 수호대 - 맞춤법 배틀</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+        body { font-family: 'Jua', sans-serif; background-color: #f0f9ff; overflow: hidden; user-select: none; }
+        .touch-button { touch-action: manipulation; }
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        // 게임 데이터: 나무위키 및 초등 교육과정 기반 자주 틀리는 맞춤법
+        const QUIZ_DATA = [
+            { question: "친구에게 편지를 ( )", options: ["부치다", "붙이다"], answer: "부치다", desc: "'편지를 보내다'는 '부치다'가 맞아요." },
+            { question: "오늘이 ( )이야?", options: ["며칠", "몇일"], answer: "며칠", desc: "'몇일'이라는 단어는 없어요. 항상 '며칠'로 써요!" },
+            { question: "이제 ( )?", options: ["어떡해", "어떻해"], answer: "어떡해", desc: "'어떠하게 해'가 줄어든 말은 '어떡해'예요." },
+            { question: "깨끗이 ( )를 해요", options: ["설거지", "설겆이"], answer: "설거지", desc: "'설겆다'라는 말이 사라져서 '설거지'가 표준어예요." },
+            { question: "포기하지 ( )", options: ["않기로 해", "안기로 해"], answer: "않기로 해", desc: "안(아니), 않(아니하)를 기억하세요!" },
+            { question: "떡볶이가 ( )", options: ["매워요", "맵워요"], answer: "매워요", desc: "ㅂ불규칙 활용으로 '매워요'가 맞습니다." },
+            { question: "거울을 ( )", options: ["비치다", "비추다"], answer: "비추다", desc: "빛을 내게 하는 것은 '비추다'예요." },
+            { question: "문제를 ( )", options: ["맞히다", "맞추다"], answer: "맞히다", desc: "정답을 골라낼 때는 '맞히다'를 써요." },
+            { question: "김치가 맛있게 ( )", options: ["익었다", "익엇다"], answer: "익었다", desc: "과거형은 '었'을 사용해요." },
+            { question: "내 꿈을 ( )", options: ["펼쳐라", "펼처라"], answer: "펼쳐라", desc: "'치다'의 활용형으로 '쳐'가 맞아요." }
+        ];
+
+        const SpellingGame = () => {
+            const [gameState, setGameState] = useState('START'); // START, PLAYING, END
+            const [currentIdx, setCurrentIdx] = useState(0);
+            const [scores, setScores] = useState({ p1: 0, p2: 0 });
+            const [feedback, setFeedback] = useState(null);
+
+            const startBatch = () => {
+                setScores({ p1: 0, p2: 0 });
+                setCurrentIdx(0);
+                setGameState('PLAYING');
+            };
+
+            const handleAnswer = (player, choice) => {
+                if (feedback) return;
+
+                const isCorrect = choice === QUIZ_DATA[currentIdx].answer;
+                
+                if (isCorrect) {
+                    setScores(prev => ({ ...prev, [player]: prev[player] + 10 }));
+                    setFeedback({ player, type: 'correct', msg: '정답입니다!' });
+                    
+                    setTimeout(() => {
+                        if (currentIdx < QUIZ_DATA.length - 1) {
+                            setCurrentIdx(prev => prev + 1);
+                            setFeedback(null);
+                        } else {
+                            setGameState('END');
+                        }
+                    }, 1500);
+                } else {
+                    setFeedback({ player, type: 'wrong', msg: '다시 생각해보세요!' });
+                    setTimeout(() => setFeedback(null), 1000);
+                }
+            };
+
+            if (gameState === 'START') {
+                return (
+                    <div className="h-screen flex flex-col items-center justify-center bg-blue-500 text-white">
+                        <h1 className="text-6xl mb-8 animate__animated animate__bounceIn">우리말 수호대</h1>
+                        <p className="text-2xl mb-12">친구와 함께 맞춤법 대결을 시작해볼까요?</p>
+                        <button 
+                            onClick={startBatch}
+                            className="px-12 py-6 bg-yellow-400 text-blue-900 text-4xl rounded-full hover:scale-110 transition-transform shadow-xl"
+                        >
+                            게임 시작!
+                        </button>
+                    </div>
+                );
+            }
+
+            if (gameState === 'END') {
+                const winner = scores.p1 > scores.p2 ? "왼쪽 팀" : scores.p1 < scores.p2 ? "오른쪽 팀" : "무승부";
+                return (
+                    <div className="h-screen flex flex-col items-center justify-center bg-purple-600 text-white">
+                        <h2 className="text-5xl mb-4">게임 종료!</h2>
+                        <div className="text-8xl mb-8">{winner === "무승부" ? "🤝" : "🏆"}</div>
+                        <p className="text-3xl mb-8">{winner} 승리! ({scores.p1} : {scores.p2})</p>
+                        <button 
+                            onClick={() => setGameState('START')}
+                            className="px-8 py-4 bg-white text-purple-600 text-2xl rounded-xl"
+                        >
+                            다시 하기
+                        </button>
+                    </div>
+                );
+            }
+
+            const currentQuiz = QUIZ_DATA[currentIdx];
+
+            return (
+                <div className="h-screen flex overflow-hidden">
+                    {/* 왼쪽 플레이어 존 */}
+                    <PlayerArea 
+                        id="p1" 
+                        score={scores.p1} 
+                        quiz={currentQuiz} 
+                        onAnswer={(c) => handleAnswer('p1', c)} 
+                        feedback={feedback}
+                        side="left"
+                    />
+
+                    {/* 중앙 가이드 라인 및 정보 */}
+                    <div className="w-2 bg-white flex flex-col items-center justify-center relative">
+                        <div className="absolute top-10 bg-white text-blue-500 rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold border-4 border-blue-500 shadow-lg">
+                            {currentIdx + 1}
+                        </div>
+                    </div>
+
+                    {/* 오른쪽 플레이어 존 */}
+                    <PlayerArea 
+                        id="p2" 
+                        score={scores.p2} 
+                        quiz={currentQuiz} 
+                        onAnswer={(c) => handleAnswer('p2', c)} 
+                        feedback={feedback}
+                        side="right"
+                    />
+                </div>
+            );
+        };
+
+        const PlayerArea = ({ id, score, quiz, onAnswer, feedback, side }) => {
+            const isMyFeedback = feedback && feedback.player === id;
+            const bgClass = side === 'left' ? 'bg-orange-100' : 'bg-green-100';
+
+            return (
+                <div className={`flex-1 flex flex-col p-8 transition-colors ${bgClass} ${isMyFeedback && feedback.type === 'wrong' ? 'shake' : ''}`}>
+                    <div className="flex justify-between items-center mb-10">
+                        <div className="text-3xl text-gray-700 font-bold">{side === 'left' ? '진격의 블루' : '무적의 레드'}</div>
+                        <div className="text-4xl text-blue-600 font-bold">점수: {score}</div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                        <div className="bg-white p-10 rounded-3xl shadow-lg mb-12 w-full text-center">
+                            <h3 className="text-4xl leading-relaxed">"{quiz.question}"</h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-6 w-full max-w-md">
+                            {quiz.options.map((opt, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => onAnswer(opt)}
+                                    className={`touch-button py-8 text-4xl rounded-2xl shadow-md transition-all active:scale-95 ${
+                                        isMyFeedback && feedback.type === 'correct' && quiz.answer === opt 
+                                        ? 'bg-green-500 text-white' 
+                                        : 'bg-white hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {opt}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {isMyFeedback && feedback.type === 'correct' && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-green-500 bg-opacity-90 text-white p-10 text-center animate__animated animate__fadeIn">
+                            <div className="text-8xl mb-4">⭕</div>
+                            <div className="text-4xl font-bold mb-4">{feedback.msg}</div>
+                            <div className="text-2xl">{quiz.desc}</div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<SpellingGame />);
+    </script>
+</body>
+</html>
