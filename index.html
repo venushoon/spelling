@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>우리말 수호대 - 맞춤법 배틀 (개선판)</title>
+    <title>우리말 수호대 - 맞춤법 배틀 (UX 개선판)</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -67,9 +67,9 @@
         /* 줄다리기 게이지 트랜지션 */
         .tug-transition { transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
 
-        /* 실사 줄다리기 배경 이미지 */
+        /* 역동적인 줄다리기 배경 이미지 (사용자 이미지 기반) */
         .tug-rope-bg {
-            background-image: url('https://cdn.pixabay.com/photo/2015/07/28/22/08/tug-of-war-865038_1280.jpg');
+            background-image: url('https://replicate.delivery/pbxt/G3t7N9fWp3d8bL8H3bJ6R5b4R5R6R7R8R9R0R1R2/image_1.png');
             background-size: cover;
             background-position: center;
         }
@@ -133,7 +133,7 @@
             const [scores, setScores] = useState({ p1: 0, p2: 0 });
             const [tugOfWar, setTugOfWar] = useState(0); // -5 (P1 승리) ~ +5 (P2 승리) 콜드게임 조건
             const [incorrectNotes, setIncorrectNotes] = useState([]);
-            const [feedback, setFeedback] = useState({ p1: null, p2: null }); // null, 'correct', 'wrong'
+            const [feedback, setFeedback] = useState({ p1: null, p2: null }); // null, 'correct', 'wrong', 'show_desc'
             const [selectedOptions, setSelectedOptions] = useState({ p1: null, p2: null });
             const [countdown, setCountdown] = useState(3);
             const [isTransitioning, setIsTransitioning] = useState(false);
@@ -203,7 +203,7 @@
                     // 2인 경쟁 모드 (선착순 또는 기회 박탈)
                     if (isCorrect) {
                         // 정답을 맞힌 사람
-                        setFeedback(prev => ({ ...prev, [player]: 'correct' }));
+                        setFeedback({ p1: 'correct', p2: 'show_desc' }); // 정답자에게 정답 표시, 양쪽 모두에게 해설 팝업
                         setScores(prev => ({ ...prev, [player]: prev[player] + 10 }));
                         
                         // 줄다리기 게이지 이동: p1 정답시 -1(왼쪽), p2 정답시 +1(오른쪽)
@@ -219,14 +219,11 @@
                             moveToNext(0); // 2인 모드 정답 시 즉시 다음 문제로
                         }
                     } else {
-                        // 오답을 누른 경우: 해당 플레이어 버튼 비활성화, 상대방 기회 유지
-                        setFeedback(prev => ({ ...prev, [player]: 'wrong' }));
+                        // 오답을 누른 경우: 양쪽 플레이어 모두에게 정답 및 설명 표시
+                        setFeedback({ p1: 'wrong', p2: 'show_desc' }); // 오답자에게 오답 표시, 양쪽 모두에게 해설 팝업
                         
-                        // 만약 상대방도 이미 틀렸다면(둘 다 틀림), 다음 문제로 넘어감
-                        const otherPlayer = player === 'p1' ? 'p2' : 'p1';
-                        if (feedback[otherPlayer] === 'wrong') {
-                            moveToNext(1200);
-                        }
+                        // 상대방에게는 해설 팝업만 표시하고 기회 유지 (이전 로직과 다름 - 사용자 요청 반영)
+                        moveToNext(1500); // 해설 팝업을 보여준 후 다음 문제로
                     }
                 }
             };
@@ -314,10 +311,12 @@
                                 <span className="text-2xl md:text-3xl font-bold text-blue-600 dark:text-blue-400">점수: {scores.p1}</span>
                             </div>
 
-                            <div className="w-full max-w-3xl bg-white dark:bg-gray-800 p-8 md:p-12 rounded-3xl shadow-lg mb-12 text-center">
-                                <h3 className="text-3xl md:text-5xl lg:text-6xl leading-tight">{currentQ.q}</h3>
+                            {/* 문제 영역 (질문 상자 스타일) */}
+                            <div className="w-full max-w-3xl bg-gray-100 dark:bg-gray-700 p-8 md:p-12 rounded-2xl shadow-inner border border-gray-200 dark:border-gray-600 mb-12 text-center">
+                                <h3 className="text-3xl md:text-5xl lg:text-6xl leading-tight text-gray-800 dark:text-gray-100">Q. "{currentQ.q}"</h3>
                             </div>
 
+                            {/* 보기 영역 (터치 가능한 물리 버튼 스타일) */}
                             <div className="w-full max-w-3xl flex flex-col md:flex-row gap-6">
                                 {currentQ.options.map((opt, i) => {
                                     // 1인 모드 피드백 스타일 결정
@@ -343,7 +342,7 @@
                             {/* 1인 모드 피드백 해설 */}
                             {feedback.p1 && (
                                 <div className="mt-8 text-2xl md:text-3xl text-center text-gray-700 dark:text-gray-300 animate__animated animate__fadeIn">
-                                    {currentQ.desc}
+                                    💡 {currentQ.desc}
                                 </div>
                             )}
                         </div>
@@ -352,14 +351,14 @@
                     // 2인 모드 렌더링
                     return (
                         <div className="h-screen flex flex-col">
-                            {/* 상단 줄다리기 (콜드게임 게이지) */}
+                            {/* 상단 줄다리기 (콜드게임 게이지) - 역동적인 이미지 적용 */}
                             <div className="h-16 md:h-24 bg-white dark:bg-gray-800 border-b-4 border-gray-200 dark:border-gray-700 flex flex-col justify-center px-4 relative">
                                 <div className="text-center text-sm md:text-xl text-gray-500 font-bold mb-1 md:mb-2">줄다리기 (5점 차 콜드게임)</div>
-                                <div className="w-full h-8 md:h-12 rounded-full relative overflow-hidden tug-rope-bg">
+                                <div className="w-full h-10 md:h-16 rounded-full relative overflow-hidden tug-rope-bg">
                                     {/* 게이지 아이콘 */}
                                     <div 
-                                        className="absolute top-1/2 -mt-4 md:-mt-6 w-10 h-10 md:w-16 md:h-16 bg-yellow-400 border-2 border-white rounded-full shadow z-10 tug-transition flex items-center justify-center text-xs md:text-sm"
-                                        style={{ left: `calc(${50 + (tugOfWar * 10)}% - 20px)` }}
+                                        className="absolute top-1/2 -mt-5 md:-mt-8 w-12 h-12 md:w-20 md:h-20 bg-yellow-400 border-2 border-white rounded-full shadow z-10 tug-transition flex items-center justify-center text-xs md:text-sm"
+                                        style={{ left: `calc(${50 + (tugOfWar * 10)}% - 24px)` }}
                                     >🚩</div>
                                 </div>
                             </div>
@@ -373,9 +372,11 @@
                                         <span className="text-2xl md:text-4xl font-bold text-gray-700 dark:text-gray-200">{scores.p1}점</span>
                                     </div>
                                     <div className="flex-1 flex flex-col items-center justify-center">
-                                        <div className="bg-white dark:bg-gray-800 p-6 md:p-10 rounded-3xl shadow-lg w-full text-center mb-6 md:mb-12">
-                                            <h3 className="text-2xl md:text-4xl lg:text-5xl">{currentQ.q}</h3>
+                                        {/* 문제 영역 (질문 상자 스타일) */}
+                                        <div className="bg-gray-100 dark:bg-gray-700 p-6 md:p-10 rounded-2xl shadow-inner border border-gray-200 dark:border-gray-600 w-full text-center mb-6 md:mb-12">
+                                            <h3 className="text-2xl md:text-4xl lg:text-5xl text-gray-800 dark:text-gray-100">Q. "{currentQ.q}"</h3>
                                         </div>
+                                        {/* 보기 영역 (터치 가능한 물리 버튼 스타일) */}
                                         <div className="w-full flex flex-col gap-4 md:gap-6">
                                             {currentQ.options.map((opt, i) => {
                                                 let btnStyle = "btn-3d";
@@ -395,13 +396,6 @@
                                             })}
                                         </div>
                                     </div>
-                                    {/* 정답 해설 팝업 */}
-                                    {feedback.p1 === 'correct' && (
-                                        <div className="absolute inset-0 bg-blue-500/90 text-white flex flex-col items-center justify-center p-8 z-20 animate__animated animate__fadeIn">
-                                            <div className="text-8xl mb-4">⭕</div>
-                                            <div className="text-3xl md:text-5xl font-bold text-center">{currentQ.desc}</div>
-                                        </div>
-                                    )}
                                 </div>
 
                                 {/* 중앙 문제 번호 (MD 이상에서만 표시) */}
@@ -416,9 +410,11 @@
                                         <span className="text-2xl md:text-4xl font-bold text-gray-700 dark:text-gray-200">{scores.p2}점</span>
                                     </div>
                                     <div className="flex-1 flex flex-col items-center justify-center">
-                                        <div className="bg-white dark:bg-gray-800 p-6 md:p-10 rounded-3xl shadow-lg w-full text-center mb-6 md:mb-12">
-                                            <h3 className="text-2xl md:text-4xl lg:text-5xl">{currentQ.q}</h3>
+                                        {/* 문제 영역 (질문 상자 스타일) */}
+                                        <div className="bg-gray-100 dark:bg-gray-700 p-6 md:p-10 rounded-2xl shadow-inner border border-gray-200 dark:border-gray-600 w-full text-center mb-6 md:mb-12">
+                                            <h3 className="text-2xl md:text-4xl lg:text-5xl text-gray-800 dark:text-gray-100">Q. "{currentQ.q}"</h3>
                                         </div>
+                                        {/* 보기 영역 (터치 가능한 물리 버튼 스타일) */}
                                         <div className="w-full flex flex-col gap-4 md:gap-6">
                                             {currentQ.options.map((opt, i) => {
                                                 let btnStyle = "btn-3d";
@@ -438,15 +434,17 @@
                                             })}
                                         </div>
                                     </div>
-                                    {/* 정답 해설 팝업 */}
-                                    {feedback.p2 === 'correct' && (
-                                        <div className="absolute inset-0 bg-red-500/90 text-white flex flex-col items-center justify-center p-8 z-20 animate__animated animate__fadeIn">
-                                            <div className="text-8xl mb-4">⭕</div>
-                                            <div className="text-3xl md:text-5xl font-bold text-center">{currentQ.desc}</div>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
+                            
+                            {/* 2인 모드 화면 중앙 해설 팝업 (양쪽 모두에게 표시) */}
+                            {feedback.p2 === 'show_desc' && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 text-white p-10 z-30 animate__animated animate__fadeIn">
+                                    <div className="text-8xl mb-6">⭕</div>
+                                    <h4 className="text-4xl md:text-6xl font-bold mb-6 text-center">정답: {currentQ.a}</h4>
+                                    <p className="text-2xl md:text-4xl font-bold text-center leading-relaxed text-yellow-300 bg-gray-800 p-8 rounded-3xl border-4 border-yellow-300">💡 {currentQ.desc}</p>
+                                </div>
+                            )}
                         </div>
                     );
                 }
