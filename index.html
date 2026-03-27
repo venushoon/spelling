@@ -199,7 +199,7 @@
                     } else {
                         setFeedback({ p1: 'wrong', p2: null });
                         setIncorrectNotes(prev => [...prev, currentQ]);
-                        moveToNext(1200);
+                        moveToNext(2500); // 팝업을 읽을 수 있도록 대기 시간 늘림
                     }
                 } else {
                     // 2인 경쟁 모드 (선착순 또는 기회 박탈)
@@ -267,7 +267,7 @@
                                 🏠
                             </button>
                         )}
-                        <button onClick={() => setDarkMode(!darkMode)} className="btn-3d w-16 h-16 rounded-full flex items-center justify-center text-4xl shadow-nm-flat active:shadow-nm-flat-active transition-all duration-200 bg-white border border-gray-200">
+                        <button onClick={() => setDarkMode(!darkMode)} className="btn-3d w-16 h-16 rounded-full flex items-center justify-center text-4xl shadow-nm-flat active:shadow-nm-flat-active transition-all duration-200 bg-white border border-gray-200 ml-auto">
                             {darkMode ? '🌙' : '☀️'}
                         </button>
                     </div>
@@ -384,13 +384,6 @@
                                                 )
                                             })}
                                         </div>
-                                        
-                                        {/* 학습 모드 정답 해설 (정답 시 하단 표시) */}
-                                        {feedback.p1 === 'correct' && (
-                                            <div className="mt-8 text-2xl md:text-3xl text-center text-teal-700 bg-teal-50 p-6 rounded-2xl shadow-nm-flat border border-teal-100 animate__animated animate__fadeIn tag-rope">
-                                                💡 {currentQ.desc}
-                                            </div>
-                                        )}
                                     </div>
                                 );
                             } else {
@@ -533,36 +526,34 @@
                                 </div>
                             </div>
                         </div>
-                    );
-                }
+                    )}
 
-                {gameState === 'REVIEW' && (
-                    <div className="min-h-full flex flex-col items-center justify-center p-4 md:p-8 max-w-screen-2xl mx-auto">
-                        <div className="w-full flex justify-between items-center mb-10 sticky top-4 h-20 bg-amber-50 rounded-3xl p-6 shadow-xl border border-gray-200 z-10 tag-rope">
-                            <h2 className="text-4xl md:text-5xl font-bold text-gray-800">📝 오답 노트</h2>
-                            <button onClick={handleHome} className="btn-3d px-6 py-3 bg-teal-500 text-white text-2xl rounded-full font-bold tag-rope shadow-xl active:shadow-nm-flat-active transition-all duration-200">
-                                처음으로
-                            </button>
-                        </div>
-                        
-                        <div className="flex-1 w-full flex flex-col gap-6 overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-teal-300 scrollbar-track-teal-50" style={{ maxHeight: 'calc(100vh - 160px)' }}>
-                            {incorrectNotes.map((note, i) => (
-                                <div key={i} className="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-l-8 border-red-500 animate__animated animate__fadeInUp border border-gray-200">
-                                    <h3 className="text-2xl md:text-3xl mb-4 text-gray-900 font-bold leading-snug">{i+1}. Q. "{note.q}"</h3>
-                                    <div className="flex items-center gap-4 mb-5 text-xl md:text-2xl tag-rope">
-                                        <span className="text-teal-600 font-bold">⭕ 정답: {note.a}</span>
+                    {gameState === 'REVIEW' && (
+                        <div className="min-h-full flex flex-col items-center justify-center p-4 md:p-8 max-w-screen-2xl mx-auto">
+                            <div className="w-full flex justify-between items-center mb-10 sticky top-4 h-20 bg-amber-50 rounded-3xl p-6 shadow-xl border border-gray-200 z-10 tag-rope">
+                                <h2 className="text-4xl md:text-5xl font-bold text-gray-800">📝 오답 노트</h2>
+                                <button onClick={handleHome} className="btn-3d px-6 py-3 bg-teal-500 text-white text-2xl rounded-full font-bold tag-rope shadow-xl active:shadow-nm-flat-active transition-all duration-200">
+                                    처음으로
+                                </button>
+                            </div>
+                            
+                            <div className="flex-1 w-full flex flex-col gap-6 overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-teal-300 scrollbar-track-teal-50" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+                                {incorrectNotes.map((note, i) => (
+                                    <div key={i} className="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-l-8 border-red-500 animate__animated animate__fadeInUp border border-gray-200">
+                                        <h3 className="text-2xl md:text-3xl mb-4 text-gray-900 font-bold leading-snug">{i+1}. Q. "{note.q}"</h3>
+                                        <div className="flex items-center gap-4 mb-5 text-xl md:text-2xl tag-rope">
+                                            <span className="text-teal-600 font-bold">⭕ 정답: {note.a}</span>
+                                        </div>
+                                        <p className="text-lg md:text-xl text-teal-800 bg-teal-50 p-5 rounded-xl border border-teal-100 font-medium leading-relaxed tag-rope">
+                                            💡 {note.desc}
+                                        </p>
                                     </div>
-                                    <p className="text-lg md:text-xl text-teal-800 bg-teal-50 p-5 rounded-xl border border-teal-100 font-medium leading-relaxed tag-rope">
-                                        💡 {note.desc}
-                                    </p>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                );
-            }
-
-            return null;
+                    )}
+                </div>
+            );
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
