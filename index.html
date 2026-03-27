@@ -2,192 +2,533 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>우리말 수호대 - 맞춤법 배틀</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Jua', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
-        body { font-family: 'Jua', sans-serif; background-color: #f0f9ff; overflow: hidden; user-select: none; }
-        .touch-button { touch-action: manipulation; }
-        .shake { animation: shake 0.5s; }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
+        
+        /* 터치 최적화 및 텍스트 선택 방지 */
+        body { 
+            font-family: 'Jua', sans-serif; 
+            overflow: hidden; 
+            user-select: none; 
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
         }
+
+        /* 3D 물리 버튼 스타일 */
+        .btn-3d {
+            box-shadow: 0 8px 0 #cbd5e1;
+            transition: transform 0.1s, box-shadow 0.1s, background-color 0.2s;
+        }
+        .btn-3d:active, .btn-3d.pressed {
+            box-shadow: 0 0px 0 transparent;
+            transform: translateY(8px);
+        }
+        
+        /* 다크모드 3D 버튼 */
+        .dark .btn-3d {
+            box-shadow: 0 8px 0 #334155;
+        }
+        .dark .btn-3d:active, .dark .btn-3d.pressed {
+            box-shadow: 0 0px 0 transparent;
+            transform: translateY(8px);
+        }
+
+        /* 정답/오답 버튼 강제 스타일 (3D 효과 유지) */
+        .btn-correct { background-color: #22c55e !important; color: white !important; border-color: #16a34a !important; box-shadow: 0 8px 0 #16a34a !important; }
+        .btn-wrong { background-color: #ef4444 !important; color: white !important; border-color: #dc2626 !important; box-shadow: 0 8px 0 #dc2626 !important; }
+        .dark .btn-correct { box-shadow: 0 8px 0 #14532d !important; }
+        .dark .btn-wrong { box-shadow: 0 8px 0 #7f1d1d !important; }
+
+        .btn-correct:active, .btn-correct.pressed, .btn-wrong:active, .btn-wrong.pressed {
+            box-shadow: 0 0px 0 transparent !important;
+            transform: translateY(8px);
+        }
+
+        /* 줄다리기 게이지 트랜지션 */
+        .tug-transition { transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 </head>
-<body>
+<body class="bg-blue-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback } = React;
+        const { useState, useEffect, useRef } = React;
 
-        // 게임 데이터: 나무위키 및 초등 교육과정 기반 자주 틀리는 맞춤법
-        const QUIZ_DATA = [
-            { question: "친구에게 편지를 ( )", options: ["부치다", "붙이다"], answer: "부치다", desc: "'편지를 보내다'는 '부치다'가 맞아요." },
-            { question: "오늘이 ( )이야?", options: ["며칠", "몇일"], answer: "며칠", desc: "'몇일'이라는 단어는 없어요. 항상 '며칠'로 써요!" },
-            { question: "이제 ( )?", options: ["어떡해", "어떻해"], answer: "어떡해", desc: "'어떠하게 해'가 줄어든 말은 '어떡해'예요." },
-            { question: "깨끗이 ( )를 해요", options: ["설거지", "설겆이"], answer: "설거지", desc: "'설겆다'라는 말이 사라져서 '설거지'가 표준어예요." },
-            { question: "포기하지 ( )", options: ["않기로 해", "안기로 해"], answer: "않기로 해", desc: "안(아니), 않(아니하)를 기억하세요!" },
-            { question: "떡볶이가 ( )", options: ["매워요", "맵워요"], answer: "매워요", desc: "ㅂ불규칙 활용으로 '매워요'가 맞습니다." },
-            { question: "거울을 ( )", options: ["비치다", "비추다"], answer: "비추다", desc: "빛을 내게 하는 것은 '비추다'예요." },
-            { question: "문제를 ( )", options: ["맞히다", "맞추다"], answer: "맞히다", desc: "정답을 골라낼 때는 '맞히다'를 써요." },
-            { question: "김치가 맛있게 ( )", options: ["익었다", "익엇다"], answer: "익었다", desc: "과거형은 '었'을 사용해요." },
-            { question: "내 꿈을 ( )", options: ["펼쳐라", "펼처라"], answer: "펼쳐라", desc: "'치다'의 활용형으로 '쳐'가 맞아요." }
+        // 풍부한 맞춤법 데이터 (총 35개)
+        const ALL_QUIZ_DATA = [
+            { q: "오늘이 ( )이야?", options: ["며칠", "몇일"], a: "며칠", desc: "'몇일'이라는 단어는 없습니다. 항상 '며칠'로 씁니다." },
+            { q: "이제 ( )?", options: ["어떡해", "어떻해"], a: "어떡해", desc: "'어떠하게 해'가 줄어든 말로 '어떡해'가 맞습니다." },
+            { q: "깨끗이 ( )를 해요", options: ["설거지", "설겆이"], a: "설거지", desc: "'설겆다'라는 말이 사라져 '설거지'가 표준어입니다." },
+            { q: "숙제를 ( )", options: ["안 해", "않 해"], a: "안 해", desc: "'안'은 '아니'의 줄임말입니다." },
+            { q: "반장의 ( )", options: ["역할", "역활"], a: "역할", desc: "주어진 임무나 직책은 '역할'이라고 합니다." },
+            { q: "정말 ( ) 일이다", options: ["희한한", "희안한"], a: "희한한", desc: "드물 희(稀), 드물 한(罕)을 써서 '희한하다'입니다." },
+            { q: "너무 ( )", options: ["어이없다", "어의없다"], a: "어이없다", desc: "상상 밖의 일이라 기가 막힐 때는 '어이없다'를 씁니다." },
+            { q: "소문이 ( ) 퍼졌다", options: ["금세", "금새"], a: "금세", desc: "'금시에'가 줄어든 말로 '금세'가 맞습니다." },
+            { q: "정말 ( )이다", options: ["오랜만", "오랫만"], a: "오랜만", desc: "'오래간만'의 줄임말로 '오랜만'입니다." },
+            { q: "내일 ( )", options: ["봬요", "뵈요"], a: "봬요", desc: "'뵈어요'의 줄임말이므로 '봬요'가 맞습니다." },
+            { q: "내가 ( )", options: ["할게", "할께"], a: "할게", desc: "약속이나 의지를 나타낼 때는 '-ㄹ게'로 적습니다." },
+            { q: "( ) 갈 필요 없어", options: ["굳이", "구지"], a: "굳이", desc: "발음은 [구지]지만, 표기는 '굳이'로 합니다." },
+            { q: "( ) 참으려고 했는데", options: ["웬만하면", "왠만하면"], a: "웬만하면", desc: "이유를 묻는 '왜'와 관련 없으므로 '웬만하면'입니다." },
+            { q: "이렇게 하면 ( )", options: ["돼", "되"], a: "돼", desc: "'되어'로 바꿀 수 있으므로 '돼'가 맞습니다." },
+            { q: "친구에게 편지를 ( )", options: ["부치다", "붙이다"], a: "부치다", desc: "물건이나 편지를 보낼 때는 '부치다'를 씁니다." },
+            { q: "정답을 ( )", options: ["맞히다", "맞추다"], a: "맞히다", desc: "문제의 답을 골라낼 때는 '맞히다'를 씁니다." },
+            { q: "떡볶이가 ( )", options: ["매워요", "맵워요"], a: "매워요", desc: "ㅂ불규칙 활용으로 '매워요'가 됩니다." },
+            { q: "비밀이 ( )", options: ["드러나다", "들어나다"], a: "드러나다", desc: "보이지 않던 것이 보이게 될 때는 '드러나다'입니다." },
+            { q: "시험이 ( )", options: ["무난하다", "문안하다"], a: "무난하다", desc: "어려움이 없다는 뜻은 '무난하다(無難)'입니다." },
+            { q: "( ) 이 영화가 최고다", options: ["단언컨대", "단언컨데"], a: "단언컨대", desc: "'-하다'가 줄어들 때 '-건대'가 되어 '단언컨대'입니다." },
+            { q: "감기에 걸리기 ( )이다", options: ["십상", "쉽상"], a: "십상", desc: "'십중팔구'와 같은 뜻의 '십상팔구'에서 온 '십상'입니다." },
+            { q: "물건을 ( ) 마시오", options: ["건드리지", "건들이지"], a: "건드리지", desc: "기본형이 '건드리다'입니다." },
+            { q: "( ) 않고 대답하다", options: ["서슴지", "서슴치"], a: "서슴지", desc: "어간이 '서슴-'이므로 '서슴지'가 맞습니다." },
+            { q: "외출할 때 문을 ( )", options: ["잠가라", "잠궈라"], a: "잠가라", desc: "기본형이 '잠그다'이며, '잠가'로 활용합니다." },
+            { q: "김치를 ( )", options: ["담가", "담궈"], a: "담가", desc: "기본형이 '담그다'이며, '담가'로 활용합니다." },
+            { q: "맛있는 김치( )", options: ["찌개", "찌게"], a: "찌개", desc: "명사를 만드는 접미사 '-애'가 붙어 '찌개'가 됩니다." },
+            { q: "( ) 포기했다", options: ["일찍이", "일찌기"], a: "일찍이", desc: "부사 '일찍'에 '이'가 붙어 '일찍이'로 적습니다." },
+            { q: "비가 오는데 ( ) 바람까지 분다", options: ["더욱이", "더우기"], a: "더욱이", desc: "부사 '더욱'에 '이'가 붙어 '더욱이'로 적습니다." },
+            { q: "( ) 큰일 날 뻔했다", options: ["하마터면", "하마트면"], a: "하마터면", desc: "위험한 상황을 겨우 벗어났을 때 '하마터면'을 씁니다." },
+            { q: "모두 ( ) 얼마인가요?", options: ["통틀어", "통털어"], a: "통틀어", desc: "기본형이 '통틀다'이므로 '통틀어'입니다." },
+            { q: "마당이 ( )", options: ["널따랗다", "넓다랗다"], a: "널따랗다", desc: "발음대로 '널따랗다'로 적습니다." },
+            { q: "첫발을 ( )", options: ["내디뎠다", "내딛었다"], a: "내디뎠다", desc: "'내디디다'의 과거형으로 '내디뎠다'가 맞습니다." },
+            { q: "돈이 없는 ( )", options: ["빈털터리", "빈털털이"], a: "빈털터리", desc: "발음대로 '빈털터리'로 적습니다." },
+            { q: "사건이 ( ) 있다", options: ["얽히고설켜", "얼키고설켜"], a: "얽히고설켜", desc: "'얽히다'와 '설키다'가 합쳐진 말입니다." },
+            { q: "은혜를 ( )", options: ["대갚음하다", "되갚음하다"], a: "대갚음하다", desc: "남에게 입은 은혜나 원한을 그대로 갚는 것은 '대갚음'입니다." }
         ];
 
-        const SpellingGame = () => {
-            const [gameState, setGameState] = useState('START'); // START, PLAYING, END
+        // 유틸리티: 배열 섞기
+        const shuffle = (array) => [...array].sort(() => Math.random() - 0.5);
+
+        const App = () => {
+            const [darkMode, setDarkMode] = useState(false);
+            const [gameState, setGameState] = useState('SETUP'); // SETUP, COUNTDOWN, PLAYING, RESULT, REVIEW
+            const [gameConfig, setGameConfig] = useState({ mode: '1P', count: 10 });
+            
+            const [questions, setQuestions] = useState([]);
             const [currentIdx, setCurrentIdx] = useState(0);
             const [scores, setScores] = useState({ p1: 0, p2: 0 });
-            const [feedback, setFeedback] = useState(null);
+            const [tugOfWar, setTugOfWar] = useState(0); // -5 (P1 승리) ~ +5 (P2 승리) 콜드게임 조건
+            const [incorrectNotes, setIncorrectNotes] = useState([]);
+            const [feedback, setFeedback] = useState({ p1: null, p2: null }); // null, 'correct', 'wrong'
+            const [selectedOptions, setSelectedOptions] = useState({ p1: null, p2: null });
+            const [countdown, setCountdown] = useState(3);
+            const [isTransitioning, setIsTransitioning] = useState(false);
 
-            const startBatch = () => {
-                setScores({ p1: 0, p2: 0 });
-                setCurrentIdx(0);
-                setGameState('PLAYING');
-            };
+            // 다크모드 제어
+            useEffect(() => {
+                if (darkMode) document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+            }, [darkMode]);
 
-            const handleAnswer = (player, choice) => {
-                if (feedback) return;
-
-                const isCorrect = choice === QUIZ_DATA[currentIdx].answer;
+            // 게임 시작 (설정 완료)
+            const startGame = () => {
+                const shuffled = shuffle(ALL_QUIZ_DATA).slice(0, gameConfig.count);
+                // 보기 항목도 랜덤으로 섞기
+                const finalQuestions = shuffled.map(q => ({ ...q, options: shuffle(q.options) }));
                 
-                if (isCorrect) {
-                    setScores(prev => ({ ...prev, [player]: prev[player] + 10 }));
-                    setFeedback({ player, type: 'correct', msg: '정답입니다!' });
-                    
-                    setTimeout(() => {
-                        if (currentIdx < QUIZ_DATA.length - 1) {
-                            setCurrentIdx(prev => prev + 1);
-                            setFeedback(null);
-                        } else {
-                            setGameState('END');
-                        }
-                    }, 1500);
+                setQuestions(finalQuestions);
+                setCurrentIdx(0);
+                setScores({ p1: 0, p2: 0 });
+                setTugOfWar(0);
+                setIncorrectNotes([]);
+                setFeedback({ p1: null, p2: null });
+                setSelectedOptions({ p1: null, p2: null });
+                setIsTransitioning(false);
+                setCountdown(3);
+                
+                if (gameConfig.mode === '2P') {
+                    setGameState('COUNTDOWN');
                 } else {
-                    setFeedback({ player, type: 'wrong', msg: '다시 생각해보세요!' });
-                    setTimeout(() => setFeedback(null), 1000);
+                    setGameState('PLAYING');
                 }
             };
 
-            if (gameState === 'START') {
+            // 2인 모드 카운트다운
+            useEffect(() => {
+                if (gameState === 'COUNTDOWN') {
+                    if (countdown > 0) {
+                        const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+                        return () => clearTimeout(timer);
+                    } else {
+                        setGameState('PLAYING');
+                    }
+                }
+            }, [gameState, countdown]);
+
+            // 정답 처리 로직
+            const handleAnswer = (player, option) => {
+                if (isTransitioning || feedback[player] !== null) return; // 이미 대기중이거나, 해당 플레이어가 이미 답을 누른 경우 무시
+
+                const currentQ = questions[currentIdx];
+                const isCorrect = option === currentQ.a;
+
+                setSelectedOptions(prev => ({ ...prev, [player]: option }));
+
+                if (gameConfig.mode === '1P') {
+                    // 1인 학습 모드
+                    if (isCorrect) {
+                        setFeedback({ p1: 'correct', p2: null });
+                        setScores(prev => ({ ...prev, p1: prev.p1 + 10 }));
+                        moveToNext(1200);
+                    } else {
+                        setFeedback({ p1: 'wrong', p2: null });
+                        setIncorrectNotes(prev => [...prev, currentQ]);
+                        moveToNext(1200);
+                    }
+                } else {
+                    // 2인 경쟁 모드 (선착순 또는 기회 박탈)
+                    if (isCorrect) {
+                        // 정답을 맞힌 사람
+                        setFeedback(prev => ({ ...prev, [player]: 'correct' }));
+                        setScores(prev => ({ ...prev, [player]: prev[player] + 10 }));
+                        
+                        // 줄다리기 게이지 이동: p1 정답시 -1(왼쪽), p2 정답시 +1(오른쪽)
+                        const tugChange = player === 'p1' ? -1 : 1;
+                        const newTug = tugOfWar + tugChange;
+                        setTugOfWar(newTug);
+
+                        // 콜드게임 체크 (차이가 5가 되면 즉시 종료)
+                        if (Math.abs(newTug) >= 5) {
+                            setTimeout(() => setGameState('RESULT'), 1500);
+                            setIsTransitioning(true);
+                        } else {
+                            moveToNext(1500);
+                        }
+                    } else {
+                        // 오답을 누른 경우: 해당 플레이어 버튼 비활성화, 상대방 기회 유지
+                        setFeedback(prev => ({ ...prev, [player]: 'wrong' }));
+                        
+                        // 만약 상대방도 이미 틀렸다면(둘 다 틀림), 다음 문제로 넘어감
+                        const otherPlayer = player === 'p1' ? 'p2' : 'p1';
+                        if (feedback[otherPlayer] === 'wrong') {
+                            moveToNext(1200);
+                        }
+                    }
+                }
+            };
+
+            const moveToNext = (delay) => {
+                setIsTransitioning(true);
+                setTimeout(() => {
+                    if (currentIdx < questions.length - 1) {
+                        setCurrentIdx(prev => prev + 1);
+                        setFeedback({ p1: null, p2: null });
+                        setSelectedOptions({ p1: null, p2: null });
+                        setIsTransitioning(false);
+                    } else {
+                        setGameState('RESULT');
+                    }
+                }, delay);
+            };
+
+            // ================= 화면 렌더링 =================
+
+            if (gameState === 'SETUP') {
                 return (
-                    <div className="h-screen flex flex-col items-center justify-center bg-blue-500 text-white">
-                        <h1 className="text-6xl mb-8 animate__animated animate__bounceIn">우리말 수호대</h1>
-                        <p className="text-2xl mb-12">친구와 함께 맞춤법 대결을 시작해볼까요?</p>
-                        <button 
-                            onClick={startBatch}
-                            className="px-12 py-6 bg-yellow-400 text-blue-900 text-4xl rounded-full hover:scale-110 transition-transform shadow-xl"
-                        >
-                            게임 시작!
+                    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
+                        {/* 다크모드 토글 버튼 */}
+                        <button onClick={() => setDarkMode(!darkMode)} className="absolute top-4 right-4 p-3 rounded-full bg-white dark:bg-gray-800 shadow-md text-2xl">
+                            {darkMode ? '🌙' : '☀️'}
                         </button>
+
+                        <h1 className="text-4xl md:text-6xl font-bold text-blue-600 dark:text-blue-400 mb-2 animate__animated animate__bounceIn">우리말 수호대</h1>
+                        <p className="text-lg md:text-2xl text-gray-600 dark:text-gray-300 mb-10">알쏭달쏭 맞춤법 배틀</p>
+
+                        <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl w-full max-w-2xl flex flex-col gap-8">
+                            <div>
+                                <h2 className="text-2xl mb-4 text-center">게임 모드</h2>
+                                <div className="flex gap-4">
+                                    <button onClick={() => setGameConfig({...gameConfig, mode: '1P'})} className={`flex-1 py-4 text-xl rounded-2xl border-2 transition-all ${gameConfig.mode === '1P' ? 'bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900 dark:text-blue-200' : 'border-gray-200 dark:border-gray-600'}`}>
+                                        👤 1인 학습
+                                    </button>
+                                    <button onClick={() => setGameConfig({...gameConfig, mode: '2P'})} className={`flex-1 py-4 text-xl rounded-2xl border-2 transition-all ${gameConfig.mode === '2P' ? 'bg-red-100 border-red-500 text-red-700 dark:bg-red-900 dark:text-red-200' : 'border-gray-200 dark:border-gray-600'}`}>
+                                        ⚔️ 2인 대전
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h2 className="text-2xl mb-4 text-center">문제 수</h2>
+                                <div className="flex gap-4">
+                                    {[10, 20, 30].map(cnt => (
+                                        <button key={cnt} onClick={() => setGameConfig({...gameConfig, count: cnt})} className={`flex-1 py-3 text-xl rounded-2xl border-2 transition-all ${gameConfig.count === cnt ? 'bg-green-100 border-green-500 text-green-700 dark:bg-green-900 dark:text-green-200' : 'border-gray-200 dark:border-gray-600'}`}>
+                                            {cnt}문제
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button onClick={startGame} className="btn-3d w-full py-6 mt-4 bg-yellow-400 dark:bg-yellow-500 text-yellow-900 dark:text-yellow-900 text-3xl rounded-full font-bold border-2 border-yellow-500">
+                                게임 시작!
+                            </button>
+                        </div>
                     </div>
                 );
             }
 
-            if (gameState === 'END') {
-                const winner = scores.p1 > scores.p2 ? "왼쪽 팀" : scores.p1 < scores.p2 ? "오른쪽 팀" : "무승부";
+            if (gameState === 'COUNTDOWN') {
                 return (
-                    <div className="h-screen flex flex-col items-center justify-center bg-purple-600 text-white">
-                        <h2 className="text-5xl mb-4">게임 종료!</h2>
-                        <div className="text-8xl mb-8">{winner === "무승부" ? "🤝" : "🏆"}</div>
-                        <p className="text-3xl mb-8">{winner} 승리! ({scores.p1} : {scores.p2})</p>
-                        <button 
-                            onClick={() => setGameState('START')}
-                            className="px-8 py-4 bg-white text-purple-600 text-2xl rounded-xl"
-                        >
-                            다시 하기
-                        </button>
+                    <div className="h-screen flex items-center justify-center bg-blue-500 dark:bg-blue-800 text-white">
+                        <div className="text-center animate__animated animate__zoomIn">
+                            <h2 className="text-9xl font-bold mb-4">{countdown > 0 ? countdown : '시작!'}</h2>
+                            <p className="text-3xl">두 손을 준비하세요!</p>
+                        </div>
                     </div>
                 );
             }
 
-            const currentQuiz = QUIZ_DATA[currentIdx];
+            if (gameState === 'PLAYING') {
+                const currentQ = questions[currentIdx];
 
-            return (
-                <div className="h-screen flex overflow-hidden">
-                    {/* 왼쪽 플레이어 존 */}
-                    <PlayerArea 
-                        id="p1" 
-                        score={scores.p1} 
-                        quiz={currentQuiz} 
-                        onAnswer={(c) => handleAnswer('p1', c)} 
-                        feedback={feedback}
-                        side="left"
-                    />
+                if (gameConfig.mode === '1P') {
+                    // 1인 모드 렌더링
+                    return (
+                        <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-8">
+                            <div className="w-full max-w-3xl flex justify-between items-center mb-8">
+                                <span className="text-2xl md:text-3xl font-bold text-gray-500">문제 {currentIdx + 1} / {questions.length}</span>
+                                <span className="text-2xl md:text-3xl font-bold text-blue-600 dark:text-blue-400">점수: {scores.p1}</span>
+                            </div>
 
-                    {/* 중앙 가이드 라인 및 정보 */}
-                    <div className="w-2 bg-white flex flex-col items-center justify-center relative">
-                        <div className="absolute top-10 bg-white text-blue-500 rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold border-4 border-blue-500 shadow-lg">
-                            {currentIdx + 1}
+                            <div className="w-full max-w-3xl bg-white dark:bg-gray-800 p-8 md:p-12 rounded-3xl shadow-lg mb-12 text-center">
+                                <h3 className="text-3xl md:text-5xl lg:text-6xl leading-tight">{currentQ.q}</h3>
+                            </div>
+
+                            <div className="w-full max-w-3xl flex flex-col md:flex-row gap-6">
+                                {currentQ.options.map((opt, i) => {
+                                    // 1인 모드 피드백 스타일 결정
+                                    let btnStyle = "btn-3d";
+                                    if (feedback.p1) { // 답을 고른 후
+                                        if (opt === currentQ.a) btnStyle += " btn-correct"; // 정답은 무조건 초록색
+                                        else if (opt === selectedOptions.p1) btnStyle += " btn-wrong"; // 내가 고른 오답은 빨간색
+                                    }
+
+                                    return (
+                                        <button 
+                                            key={i} 
+                                            onClick={() => handleAnswer('p1', opt)}
+                                            className={`w-full py-8 md:py-12 text-3xl md:text-4xl lg:text-5xl rounded-3xl font-bold border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 ${btnStyle}`}
+                                            disabled={isTransitioning}
+                                        >
+                                            {opt}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                            
+                            {/* 1인 모드 피드백 해설 */}
+                            {feedback.p1 && (
+                                <div className="mt-8 text-2xl md:text-3xl text-center text-gray-700 dark:text-gray-300 animate__animated animate__fadeIn">
+                                    {currentQ.desc}
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    );
+                } else {
+                    // 2인 모드 렌더링
+                    return (
+                        <div className="h-screen flex flex-col">
+                            {/* 상단 줄다리기 (콜드게임 게이지) */}
+                            <div className="h-16 md:h-24 bg-white dark:bg-gray-800 border-b-4 border-gray-200 dark:border-gray-700 flex flex-col justify-center px-4 relative">
+                                <div className="text-center text-sm md:text-xl text-gray-500 font-bold mb-1 md:mb-2">줄다리기 (5점 차 콜드게임)</div>
+                                <div className="w-full h-4 md:h-6 bg-gray-200 dark:bg-gray-600 rounded-full relative overflow-hidden">
+                                    <div className="absolute top-0 bottom-0 bg-blue-400" style={{ left: '0', width: '50%' }}></div>
+                                    <div className="absolute top-0 bottom-0 bg-red-400" style={{ left: '50%', width: '50%' }}></div>
+                                    {/* 게이지 아이콘 */}
+                                    <div 
+                                        className="absolute top-1/2 -mt-3 md:-mt-4 w-6 h-6 md:w-8 md:h-8 bg-yellow-400 border-2 border-white rounded-full shadow z-10 tug-transition flex items-center justify-center text-xs md:text-sm"
+                                        style={{ left: `calc(${50 + (tugOfWar * 10)}% - 12px)` }}
+                                    >🚩</div>
+                                </div>
+                            </div>
 
-                    {/* 오른쪽 플레이어 존 */}
-                    <PlayerArea 
-                        id="p2" 
-                        score={scores.p2} 
-                        quiz={currentQuiz} 
-                        onAnswer={(c) => handleAnswer('p2', c)} 
-                        feedback={feedback}
-                        side="right"
-                    />
-                </div>
-            );
-        };
+                            {/* 플레이 영역 */}
+                            <div className="flex-1 flex flex-col md:flex-row relative">
+                                {/* P1 (왼쪽) */}
+                                <div className="flex-1 flex flex-col p-4 md:p-8 bg-blue-50 dark:bg-blue-900 border-b-4 md:border-b-0 md:border-r-4 border-gray-300 dark:border-gray-700">
+                                    <div className="flex justify-between items-center mb-4 md:mb-8">
+                                        <span className="text-2xl md:text-4xl font-bold text-blue-600 dark:text-blue-300">블루 팀</span>
+                                        <span className="text-2xl md:text-4xl font-bold text-gray-700 dark:text-gray-200">{scores.p1}점</span>
+                                    </div>
+                                    <div className="flex-1 flex flex-col items-center justify-center">
+                                        <div className="bg-white dark:bg-gray-800 p-6 md:p-10 rounded-3xl shadow-lg w-full text-center mb-6 md:mb-12">
+                                            <h3 className="text-2xl md:text-4xl lg:text-5xl">{currentQ.q}</h3>
+                                        </div>
+                                        <div className="w-full flex flex-col gap-4 md:gap-6">
+                                            {currentQ.options.map((opt, i) => {
+                                                let btnStyle = "btn-3d";
+                                                if (feedback.p1 === 'correct' && opt === currentQ.a) btnStyle += " btn-correct";
+                                                if (feedback.p1 === 'wrong' && opt === selectedOptions.p1) btnStyle += " btn-wrong";
+                                                
+                                                return (
+                                                    <button 
+                                                        key={`p1-${i}`} 
+                                                        onClick={() => handleAnswer('p1', opt)}
+                                                        className={`w-full py-6 md:py-10 text-2xl md:text-4xl lg:text-5xl rounded-2xl font-bold border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 ${btnStyle}`}
+                                                        disabled={feedback.p1 !== null || isTransitioning}
+                                                    >
+                                                        {opt}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                    {/* 정답 해설 팝업 */}
+                                    {feedback.p1 === 'correct' && (
+                                        <div className="absolute inset-0 bg-blue-500/90 text-white flex flex-col items-center justify-center p-8 z-20 animate__animated animate__fadeIn">
+                                            <div className="text-8xl mb-4">⭕</div>
+                                            <div className="text-3xl md:text-5xl font-bold text-center">{currentQ.desc}</div>
+                                        </div>
+                                    )}
+                                </div>
 
-        const PlayerArea = ({ id, score, quiz, onAnswer, feedback, side }) => {
-            const isMyFeedback = feedback && feedback.player === id;
-            const bgClass = side === 'left' ? 'bg-orange-100' : 'bg-green-100';
+                                {/* 중앙 문제 번호 (MD 이상에서만 표시) */}
+                                <div className="hidden md:flex absolute left-1/2 top-1/2 -ml-8 -mt-8 w-16 h-16 bg-white dark:bg-gray-800 rounded-full border-4 border-gray-300 dark:border-gray-600 items-center justify-center text-2xl font-bold z-10 shadow-lg">
+                                    {currentIdx + 1}
+                                </div>
 
-            return (
-                <div className={`flex-1 flex flex-col p-8 transition-colors ${bgClass} ${isMyFeedback && feedback.type === 'wrong' ? 'shake' : ''}`}>
-                    <div className="flex justify-between items-center mb-10">
-                        <div className="text-3xl text-gray-700 font-bold">{side === 'left' ? '진격의 블루' : '무적의 레드'}</div>
-                        <div className="text-4xl text-blue-600 font-bold">점수: {score}</div>
-                    </div>
-
-                    <div className="flex-1 flex flex-col items-center justify-center">
-                        <div className="bg-white p-10 rounded-3xl shadow-lg mb-12 w-full text-center">
-                            <h3 className="text-4xl leading-relaxed">"{quiz.question}"</h3>
+                                {/* P2 (오른쪽) */}
+                                <div className="flex-1 flex flex-col p-4 md:p-8 bg-red-50 dark:bg-red-900">
+                                    <div className="flex justify-between items-center mb-4 md:mb-8">
+                                        <span className="text-2xl md:text-4xl font-bold text-red-600 dark:text-red-300">레드 팀</span>
+                                        <span className="text-2xl md:text-4xl font-bold text-gray-700 dark:text-gray-200">{scores.p2}점</span>
+                                    </div>
+                                    <div className="flex-1 flex flex-col items-center justify-center">
+                                        <div className="bg-white dark:bg-gray-800 p-6 md:p-10 rounded-3xl shadow-lg w-full text-center mb-6 md:mb-12">
+                                            <h3 className="text-2xl md:text-4xl lg:text-5xl">{currentQ.q}</h3>
+                                        </div>
+                                        <div className="w-full flex flex-col gap-4 md:gap-6">
+                                            {currentQ.options.map((opt, i) => {
+                                                let btnStyle = "btn-3d";
+                                                if (feedback.p2 === 'correct' && opt === currentQ.a) btnStyle += " btn-correct";
+                                                if (feedback.p2 === 'wrong' && opt === selectedOptions.p2) btnStyle += " btn-wrong";
+                                                
+                                                return (
+                                                    <button 
+                                                        key={`p2-${i}`} 
+                                                        onClick={() => handleAnswer('p2', opt)}
+                                                        className={`w-full py-6 md:py-10 text-2xl md:text-4xl lg:text-5xl rounded-2xl font-bold border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 ${btnStyle}`}
+                                                        disabled={feedback.p2 !== null || isTransitioning}
+                                                    >
+                                                        {opt}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                    {/* 정답 해설 팝업 */}
+                                    {feedback.p2 === 'correct' && (
+                                        <div className="absolute inset-0 bg-red-500/90 text-white flex flex-col items-center justify-center p-8 z-20 animate__animated animate__fadeIn">
+                                            <div className="text-8xl mb-4">⭕</div>
+                                            <div className="text-3xl md:text-5xl font-bold text-center">{currentQ.desc}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
+                    );
+                }
+            }
 
-                        <div className="grid grid-cols-1 gap-6 w-full max-w-md">
-                            {quiz.options.map((opt, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => onAnswer(opt)}
-                                    className={`touch-button py-8 text-4xl rounded-2xl shadow-md transition-all active:scale-95 ${
-                                        isMyFeedback && feedback.type === 'correct' && quiz.answer === opt 
-                                        ? 'bg-green-500 text-white' 
-                                        : 'bg-white hover:bg-gray-50'
-                                    }`}
-                                >
-                                    {opt}
+            if (gameState === 'RESULT') {
+                let title = "게임 종료!";
+                let subTitle = "";
+                
+                if (gameConfig.mode === '2P') {
+                    if (tugOfWar <= -5) {
+                        title = "콜드게임 승리!";
+                        subTitle = "🏆 블루 팀 압승! (줄다리기 승리)";
+                    } else if (tugOfWar >= 5) {
+                        title = "콜드게임 승리!";
+                        subTitle = "🏆 레드 팀 압승! (줄다리기 승리)";
+                    } else if (scores.p1 > scores.p2) {
+                        subTitle = "🏆 블루 팀 승리!";
+                    } else if (scores.p1 < scores.p2) {
+                        subTitle = "🏆 레드 팀 승리!";
+                    } else {
+                        subTitle = "🤝 무승부!";
+                    }
+                } else {
+                    subTitle = `총 ${gameConfig.count}문제 중 ${scores.p1 / 10}문제 정답!`;
+                }
+
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-purple-600 dark:bg-purple-900 text-white">
+                        <div className="text-center animate__animated animate__zoomIn bg-white/10 p-10 md:p-16 rounded-3xl backdrop-blur-sm border border-white/20">
+                            <h2 className="text-5xl md:text-7xl font-bold mb-6">{title}</h2>
+                            <p className="text-3xl md:text-5xl mb-12">{subTitle}</p>
+                            
+                            {gameConfig.mode === '2P' && (
+                                <div className="text-2xl md:text-4xl mb-12">
+                                    블루 {scores.p1} : {scores.p2} 레드
+                                </div>
+                            )}
+
+                            <div className="flex flex-col md:flex-row gap-6 justify-center">
+                                {gameConfig.mode === '1P' && incorrectNotes.length > 0 && (
+                                    <button onClick={() => setGameState('REVIEW')} className="btn-3d px-8 py-4 bg-yellow-400 text-yellow-900 text-2xl rounded-full font-bold">
+                                        📝 오답 노트 보기 ({incorrectNotes.length}개)
+                                    </button>
+                                )}
+                                <button onClick={() => setGameState('SETUP')} className="btn-3d px-8 py-4 bg-white text-purple-600 text-2xl rounded-full font-bold">
+                                    🏠 처음으로
                                 </button>
-                            ))}
+                            </div>
                         </div>
                     </div>
+                );
+            }
 
-                    {isMyFeedback && feedback.type === 'correct' && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-green-500 bg-opacity-90 text-white p-10 text-center animate__animated animate__fadeIn">
-                            <div className="text-8xl mb-4">⭕</div>
-                            <div className="text-4xl font-bold mb-4">{feedback.msg}</div>
-                            <div className="text-2xl">{quiz.desc}</div>
+            if (gameState === 'REVIEW') {
+                return (
+                    <div className="min-h-screen flex flex-col items-center p-4 md:p-8 overflow-y-auto">
+                        <div className="w-full max-w-4xl">
+                            <div className="flex justify-between items-center mb-8 sticky top-0 bg-blue-50 dark:bg-gray-900 py-4 z-10">
+                                <h2 className="text-3xl md:text-5xl font-bold text-gray-800 dark:text-gray-100">📝 오답 노트</h2>
+                                <button onClick={() => setGameState('SETUP')} className="btn-3d px-6 py-3 bg-blue-600 text-white text-xl rounded-full font-bold">
+                                    홈으로
+                                </button>
+                            </div>
+                            
+                            <div className="flex flex-col gap-6">
+                                {incorrectNotes.map((note, i) => (
+                                    <div key={i} className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-md border-l-8 border-red-500">
+                                        <h3 className="text-2xl md:text-3xl mb-4">{i+1}. {note.q}</h3>
+                                        <div className="flex items-center gap-4 mb-4 text-xl md:text-2xl">
+                                            <span className="text-green-600 dark:text-green-400 font-bold">⭕ 정답: {note.a}</span>
+                                        </div>
+                                        <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                                            💡 {note.desc}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    )}
-                </div>
-            );
+                    </div>
+                );
+            }
+
+            return null;
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<SpellingGame />);
+        root.render(<App />);
     </script>
 </body>
 </html>
