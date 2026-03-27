@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>우리말 수호대 - 맞춤법 배틀</title>
+    <title>우리말 수호대 - 맞춤법 배틀 (개선판)</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -66,6 +66,13 @@
 
         /* 줄다리기 게이지 트랜지션 */
         .tug-transition { transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* 실사 줄다리기 배경 이미지 */
+        .tug-rope-bg {
+            background-image: url('https://cdn.pixabay.com/photo/2015/07/28/22/08/tug-of-war-865038_1280.jpg');
+            background-size: cover;
+            background-position: center;
+        }
     </style>
 </head>
 <body class="bg-blue-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
@@ -209,7 +216,7 @@
                             setTimeout(() => setGameState('RESULT'), 1500);
                             setIsTransitioning(true);
                         } else {
-                            moveToNext(1500);
+                            moveToNext(0); // 2인 모드 정답 시 즉시 다음 문제로
                         }
                     } else {
                         // 오답을 누른 경우: 해당 플레이어 버튼 비활성화, 상대방 기회 유지
@@ -289,6 +296,7 @@
                         <div className="text-center animate__animated animate__zoomIn">
                             <h2 className="text-9xl font-bold mb-4">{countdown > 0 ? countdown : '시작!'}</h2>
                             <p className="text-3xl">두 손을 준비하세요!</p>
+                            <p className="text-2xl mt-4 font-bold text-yellow-300">5문제 먼저 맞추면 콜드게임 승리!</p>
                         </div>
                     </div>
                 );
@@ -347,13 +355,11 @@
                             {/* 상단 줄다리기 (콜드게임 게이지) */}
                             <div className="h-16 md:h-24 bg-white dark:bg-gray-800 border-b-4 border-gray-200 dark:border-gray-700 flex flex-col justify-center px-4 relative">
                                 <div className="text-center text-sm md:text-xl text-gray-500 font-bold mb-1 md:mb-2">줄다리기 (5점 차 콜드게임)</div>
-                                <div className="w-full h-4 md:h-6 bg-gray-200 dark:bg-gray-600 rounded-full relative overflow-hidden">
-                                    <div className="absolute top-0 bottom-0 bg-blue-400" style={{ left: '0', width: '50%' }}></div>
-                                    <div className="absolute top-0 bottom-0 bg-red-400" style={{ left: '50%', width: '50%' }}></div>
+                                <div className="w-full h-8 md:h-12 rounded-full relative overflow-hidden tug-rope-bg">
                                     {/* 게이지 아이콘 */}
                                     <div 
-                                        className="absolute top-1/2 -mt-3 md:-mt-4 w-6 h-6 md:w-8 md:h-8 bg-yellow-400 border-2 border-white rounded-full shadow z-10 tug-transition flex items-center justify-center text-xs md:text-sm"
-                                        style={{ left: `calc(${50 + (tugOfWar * 10)}% - 12px)` }}
+                                        className="absolute top-1/2 -mt-4 md:-mt-6 w-10 h-10 md:w-16 md:h-16 bg-yellow-400 border-2 border-white rounded-full shadow z-10 tug-transition flex items-center justify-center text-xs md:text-sm"
+                                        style={{ left: `calc(${50 + (tugOfWar * 10)}% - 20px)` }}
                                     >🚩</div>
                                 </div>
                             </div>
@@ -361,7 +367,7 @@
                             {/* 플레이 영역 */}
                             <div className="flex-1 flex flex-col md:flex-row relative">
                                 {/* P1 (왼쪽) */}
-                                <div className="flex-1 flex flex-col p-4 md:p-8 bg-blue-50 dark:bg-blue-900 border-b-4 md:border-b-0 md:border-r-4 border-gray-300 dark:border-gray-700">
+                                <div className="flex-1 flex flex-col p-4 md:p-8 bg-blue-50 dark:bg-blue-900 border-b-4 md:border-b-0 md:border-r-4 border-gray-300 dark:border-gray-700 relative">
                                     <div className="flex justify-between items-center mb-4 md:mb-8">
                                         <span className="text-2xl md:text-4xl font-bold text-blue-600 dark:text-blue-300">블루 팀</span>
                                         <span className="text-2xl md:text-4xl font-bold text-gray-700 dark:text-gray-200">{scores.p1}점</span>
@@ -404,7 +410,7 @@
                                 </div>
 
                                 {/* P2 (오른쪽) */}
-                                <div className="flex-1 flex flex-col p-4 md:p-8 bg-red-50 dark:bg-red-900">
+                                <div className="flex-1 flex flex-col p-4 md:p-8 bg-red-50 dark:bg-red-900 relative">
                                     <div className="flex justify-between items-center mb-4 md:mb-8">
                                         <span className="text-2xl md:text-4xl font-bold text-red-600 dark:text-red-300">레드 팀</span>
                                         <span className="text-2xl md:text-4xl font-bold text-gray-700 dark:text-gray-200">{scores.p2}점</span>
@@ -503,6 +509,7 @@
                                 <h2 className="text-3xl md:text-5xl font-bold text-gray-800 dark:text-gray-100">📝 오답 노트</h2>
                                 <button onClick={() => setGameState('SETUP')} className="btn-3d px-6 py-3 bg-blue-600 text-white text-xl rounded-full font-bold">
                                     홈으로
+                                
                                 </button>
                             </div>
                             
