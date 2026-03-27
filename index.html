@@ -37,14 +37,18 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
         
+        /* 모바일 화면 잘림 방지를 위해 body는 고정하되 overscroll 막기 */
         body { 
             font-family: 'Jua', sans-serif; 
             overflow: hidden; 
+            overscroll-behavior: none;
             user-select: none; 
             -webkit-user-select: none;
             -webkit-touch-callout: none;
             touch-action: manipulation;
+            background-color: #eef2f5;
         }
+        .dark body { background-color: #212831; }
 
         /* 뉴모피즘 버튼 스타일 */
         .btn-neumorphic {
@@ -77,15 +81,19 @@
 
         .tug-transition { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
 
-        /* 줄다리기 배경 이미지 */
+        /* 줄다리기 배경 이미지 연동 */
         .tug-rope-bg {
-            background-image: url('https://replicate.delivery/pbxt/G3t7N9fWp3d8bL8H3bJ6R5b4R5R6R7R8R9R0R1R2/image_1.png');
+            background-image: url('image_78736a.png');
             background-size: cover;
             background-position: center;
         }
+
+        /* 스크롤바 숨기기 (모바일 최적화 깔끔하게) */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-nm-bg dark:bg-nm-bg-dark text-gray-800 dark:text-gray-100 transition-colors duration-300">
+<body class="text-gray-800 dark:text-gray-100 transition-colors duration-300">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -139,14 +147,14 @@
                     {gameState !== 'SETUP' && (
                         <button 
                             onClick={() => setGameState('SETUP')} 
-                            className="btn-neumorphic fixed bottom-6 left-6 w-16 h-16 rounded-full flex items-center justify-center text-3xl z-50 shadow-nm-flat active:shadow-nm-flat-active dark:shadow-nm-flat-dark"
+                            className="btn-neumorphic fixed bottom-6 left-6 w-16 h-16 rounded-full flex items-center justify-center text-3xl z-[150] shadow-nm-flat active:shadow-nm-flat-active dark:shadow-nm-flat-dark"
                         >
                             🏠
                         </button>
                     )}
                     <button 
                         onClick={() => setDarkMode(!darkMode)} 
-                        className="btn-neumorphic fixed bottom-6 right-6 w-16 h-16 rounded-full flex items-center justify-center text-3xl z-50 shadow-nm-flat active:shadow-nm-flat-active dark:shadow-nm-flat-dark"
+                        className="btn-neumorphic fixed bottom-6 right-6 w-16 h-16 rounded-full flex items-center justify-center text-3xl z-[150] shadow-nm-flat active:shadow-nm-flat-active dark:shadow-nm-flat-dark"
                     >
                         {darkMode ? '🌙' : '☀️'}
                     </button>
@@ -238,9 +246,9 @@
                             moveToNext(0); // 정답 시 즉시 다음
                         }
                     } else {
-                        // 상대가 오답을 눌렀을 때의 학습 효과 로직: 둘 다 틀림 처리 후 팝업 호출 대기
+                        // 2P 오답 시 전체 팝업 호출을 위한 세팅
                         setFeedback({ p1: player === 'p1' ? 'wrong' : 'show_desc', p2: player === 'p2' ? 'wrong' : 'show_desc' });
-                        moveToNext(3500); // 정답 공개 팝업을 읽을 수 있도록 대기 시간 늘림
+                        moveToNext(3500); // 팝업창을 충분히 읽고 넘어갈 수 있도록 대기 시간 3.5초 부여
                     }
                 }
             };
@@ -263,300 +271,302 @@
             };
 
             return (
-                // 하단 플로팅 버튼을 위해 밑에 약간의 여백(pb-20)을 줌. 상단 패딩 제거하여 최적화.
-                <div className="min-h-screen w-full p-4 pb-20 relative flex flex-col items-center max-w-screen-2xl mx-auto">
-                    
-                    <FloatingButtons gameState={gameState} setGameState={setGameState} darkMode={darkMode} setDarkMode={setDarkMode} />
+                /* 화면 전체를 absolute inset-0으로 고정하고, 이 안에서만 스크롤되게 하여 모바일 하단 잘림을 완벽 해결합니다. pb-28은 플로팅 버튼 영역 공간 확보용입니다. */
+                <div className="absolute inset-0 w-full overflow-y-auto overflow-x-hidden no-scrollbar p-4 pb-28 flex flex-col items-center">
+                    <div className="w-full max-w-screen-2xl flex-1 flex flex-col mx-auto relative">
+                        
+                        <FloatingButtons gameState={gameState} setGameState={setGameState} darkMode={darkMode} setDarkMode={setDarkMode} />
 
-                    {/* 축하 팝업 */}
-                    {showCongratulation && (
-                        <div className="absolute inset-0 bg-black/60 z-[100] flex items-center justify-center p-8 animate__animated animate__fadeIn">
-                            <div className="btn-neumorphic p-12 rounded-3xl text-center w-full max-w-lg">
-                                <div className="text-9xl mb-8 animate__animated animate__bounceInDown animate__infinite animate__slow">🎉🏆</div>
-                                <h2 className="text-6xl font-bold text-teal-600 mb-8">대단해요!</h2>
-                                <p className="text-3xl font-bold mb-12">만점입니다! 정말 멋져요!</p>
-                                <button onClick={() => setGameState('SETUP')} className="btn-neumorphic w-full py-6 mt-4 bg-teal-500 text-white text-3xl rounded-full font-bold">
-                                    처음으로
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 1P 오답 팝업 (학습모드) */}
-                    {feedback.p1 === 'wrong' && gameConfig.mode === '1P' && (
-                         <div className="absolute inset-0 bg-black/70 z-[100] flex items-center justify-center p-6 animate__animated animate__fadeIn">
-                            <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-2xl border-t-8 border-red-500 text-center relative">
-                                <h3 className="text-3xl md:text-5xl leading-tight mb-8 text-gray-800 dark:text-gray-100">Q. "{questions[currentIdx].q}"</h3>
-                                <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-2xl mb-4 text-2xl md:text-3xl text-red-600 font-bold">
-                                    선택한 오답: {selectedOptions.p1}
+                        {/* 축하 팝업 (스크롤 무시하고 덮도록 fixed 사용) */}
+                        {showCongratulation && (
+                            <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-8 animate__animated animate__fadeIn">
+                                <div className="btn-neumorphic p-12 rounded-3xl text-center w-full max-w-lg">
+                                    <div className="text-9xl mb-8 animate__animated animate__bounceInDown animate__infinite animate__slow">🎉🏆</div>
+                                    <h2 className="text-6xl font-bold text-teal-600 mb-8">대단해요!</h2>
+                                    <p className="text-3xl font-bold mb-12">만점입니다! 정말 멋져요!</p>
+                                    <button onClick={() => setGameState('SETUP')} className="btn-neumorphic w-full py-6 mt-4 bg-teal-500 text-white text-3xl rounded-full font-bold">
+                                        처음으로
+                                    </button>
                                 </div>
-                                <div className="bg-teal-50 dark:bg-teal-900/30 p-4 rounded-2xl mb-8 text-2xl md:text-3xl text-teal-600 font-bold">
-                                    정답: {questions[currentIdx].a}
-                                </div>
-                                <p className="text-xl md:text-2xl font-medium leading-relaxed bg-gray-100 dark:bg-gray-700 p-6 rounded-2xl">
-                                    💡 {questions[currentIdx].desc}
-                                </p>
                             </div>
-                         </div>
-                    )}
+                        )}
 
-                    {/* 2P 오답 시 전체 정답 팝업 (학습효과 극대화) */}
-                    {(feedback.p1 === 'wrong' || feedback.p2 === 'wrong') && gameConfig.mode === '2P' && (
-                        <div className="absolute inset-0 bg-black/70 z-[100] flex items-center justify-center p-6 animate__animated animate__fadeIn">
-                            <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-2xl border-t-8 border-red-500 text-center relative">
-                                <div className="text-4xl mb-4 text-red-500 font-bold">아앗! 오답입니다 😥</div>
-                                <h3 className="text-3xl md:text-5xl leading-tight mb-8 text-gray-800 dark:text-gray-100">Q. "{questions[currentIdx].q}"</h3>
-                                <div className="bg-teal-50 dark:bg-teal-900/30 p-4 rounded-2xl mb-8 text-2xl md:text-3xl text-teal-600 font-bold">
-                                    정답: {questions[currentIdx].a}
+                        {/* 1P 오답 팝업 (fixed) */}
+                        {feedback.p1 === 'wrong' && gameConfig.mode === '1P' && (
+                            <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-6 animate__animated animate__fadeIn">
+                                <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-2xl border-t-8 border-red-500 text-center relative">
+                                    <h3 className="text-3xl md:text-5xl leading-tight mb-8 text-gray-800 dark:text-gray-100">Q. "{questions[currentIdx].q}"</h3>
+                                    <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-2xl mb-4 text-2xl md:text-3xl text-red-600 font-bold">
+                                        선택한 오답: {selectedOptions.p1}
+                                    </div>
+                                    <div className="bg-teal-50 dark:bg-teal-900/30 p-4 rounded-2xl mb-8 text-2xl md:text-3xl text-teal-600 font-bold">
+                                        정답: {questions[currentIdx].a}
+                                    </div>
+                                    <p className="text-xl md:text-2xl font-medium leading-relaxed bg-gray-100 dark:bg-gray-700 p-6 rounded-2xl">
+                                        💡 {questions[currentIdx].desc}
+                                    </p>
                                 </div>
-                                <p className="text-xl md:text-2xl font-medium leading-relaxed bg-gray-100 dark:bg-gray-700 p-6 rounded-2xl">
-                                    💡 {questions[currentIdx].desc}
-                                </p>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* 화면 1: 설정 */}
-                    {gameState === 'SETUP' && (
-                        <div className="flex-1 w-full flex flex-col items-center justify-center animate__animated animate__fadeIn mt-10">
-                            <h1 className="text-5xl md:text-7xl font-bold text-blue-600 dark:text-blue-400 mb-4 animate__animated animate__bounceIn">우리말 수호대</h1>
-                            <p className="text-xl md:text-3xl text-gray-600 dark:text-gray-300 mb-12">알쏭달쏭 맞춤법 배틀</p>
+                        {/* 2P 오답 시 전체 정답 팝업 (fixed - 학습효과 극대화) */}
+                        {(feedback.p1 === 'wrong' || feedback.p2 === 'wrong') && gameConfig.mode === '2P' && (
+                            <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-6 animate__animated animate__fadeIn">
+                                <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-2xl border-t-8 border-red-500 text-center relative">
+                                    <div className="text-4xl md:text-5xl mb-6 text-red-500 font-bold animate__animated animate__headShake">아앗! 오답입니다 😥</div>
+                                    <h3 className="text-3xl md:text-4xl leading-tight mb-8 text-gray-800 dark:text-gray-100">Q. "{questions[currentIdx].q}"</h3>
+                                    <div className="bg-teal-50 dark:bg-teal-900/30 p-4 rounded-2xl mb-8 text-2xl md:text-4xl text-teal-600 font-bold border border-teal-200">
+                                        ⭕ 정답: {questions[currentIdx].a}
+                                    </div>
+                                    <p className="text-xl md:text-2xl font-medium leading-relaxed bg-gray-100 dark:bg-gray-700 p-6 rounded-2xl">
+                                        💡 {questions[currentIdx].desc}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
-                            <div className="btn-neumorphic p-8 md:p-12 rounded-3xl w-full max-w-2xl flex flex-col gap-10">
-                                <div>
-                                    <h2 className="text-2xl mb-6 text-center text-gray-600 dark:text-gray-300 font-bold">게임 모드</h2>
-                                    <div className="flex gap-4">
-                                        <button onClick={() => setGameConfig({...gameConfig, mode: '1P'})} className={`btn-neumorphic flex-1 py-5 text-2xl rounded-2xl font-bold ${gameConfig.mode === '1P' ? 'bg-blue-600 text-white shadow-[inset_3px_3px_6px_rgba(0,0,0,0.2)]' : 'text-gray-700 dark:text-gray-200'}`}>
-                                            👤 1인 학습
-                                        </button>
-                                        <button onClick={() => setGameConfig({...gameConfig, mode: '2P'})} className={`btn-neumorphic flex-1 py-5 text-2xl rounded-2xl font-bold ${gameConfig.mode === '2P' ? 'bg-red-600 text-white shadow-[inset_3px_3px_6px_rgba(0,0,0,0.2)]' : 'text-gray-700 dark:text-gray-200'}`}>
-                                            ⚔️ 2인 대전
+                        {/* 화면 1: 설정 */}
+                        {gameState === 'SETUP' && (
+                            <div className="flex-1 w-full flex flex-col items-center justify-center animate__animated animate__fadeIn my-auto">
+                                <h1 className="text-5xl md:text-7xl font-bold text-blue-600 dark:text-blue-400 mb-4 animate__animated animate__bounceIn">우리말 수호대</h1>
+                                <p className="text-xl md:text-3xl text-gray-600 dark:text-gray-300 mb-10 md:mb-12">알쏭달쏭 맞춤법 배틀</p>
+
+                                <div className="btn-neumorphic p-6 md:p-12 rounded-3xl w-full max-w-2xl flex flex-col gap-6 md:gap-10">
+                                    <div>
+                                        <h2 className="text-xl md:text-2xl mb-4 text-center text-gray-600 dark:text-gray-300 font-bold">게임 모드</h2>
+                                        <div className="flex gap-4">
+                                            <button onClick={() => setGameConfig({...gameConfig, mode: '1P'})} className={`btn-neumorphic flex-1 py-4 md:py-5 text-xl md:text-2xl rounded-2xl font-bold ${gameConfig.mode === '1P' ? 'bg-blue-600 text-white shadow-[inset_3px_3px_6px_rgba(0,0,0,0.2)]' : 'text-gray-700 dark:text-gray-200'}`}>
+                                                👤 1인 학습
+                                            </button>
+                                            <button onClick={() => setGameConfig({...gameConfig, mode: '2P'})} className={`btn-neumorphic flex-1 py-4 md:py-5 text-xl md:text-2xl rounded-2xl font-bold ${gameConfig.mode === '2P' ? 'bg-red-600 text-white shadow-[inset_3px_3px_6px_rgba(0,0,0,0.2)]' : 'text-gray-700 dark:text-gray-200'}`}>
+                                                ⚔️ 2인 대전
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h2 className="text-xl md:text-2xl mb-4 text-center text-gray-600 dark:text-gray-300 font-bold">문제 수</h2>
+                                        <div className="flex gap-2 md:gap-4">
+                                            {[10, 20, 30].map(cnt => (
+                                                <button key={cnt} onClick={() => setGameConfig({...gameConfig, count: cnt})} className={`btn-neumorphic flex-1 py-3 md:py-4 text-lg md:text-2xl rounded-2xl font-bold ${gameConfig.count === cnt ? 'bg-teal-500 text-white shadow-[inset_3px_3px_6px_rgba(0,0,0,0.2)]' : 'text-gray-700 dark:text-gray-200'}`}>
+                                                    {cnt}문제
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <button onClick={startGame} className="btn-neumorphic w-full py-5 md:py-6 mt-2 md:mt-4 bg-teal-500 text-white text-2xl md:text-3xl rounded-full font-bold shadow-lg">
+                                        게임 시작!
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 화면 2: 카운트다운 */}
+                        {gameState === 'COUNTDOWN' && (
+                            <div className="flex-1 w-full flex flex-col items-center justify-center my-auto">
+                                <div className="text-center animate__animated animate__zoomIn">
+                                    <h2 className="text-[10rem] md:text-[12rem] font-bold text-teal-600 drop-shadow-xl leading-none">{countdown > 0 ? countdown : '시작!'}</h2>
+                                    <p className="text-3xl md:text-4xl text-gray-700 dark:text-gray-200 mt-4 font-bold">준비하세요!</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 화면 3: 게임 진행 */}
+                        {gameState === 'PLAYING' && (
+                            (() => {
+                                const currentQ = questions[currentIdx];
+
+                                if (gameConfig.mode === '1P') {
+                                    return (
+                                        <div className="flex-1 w-full flex flex-col items-center justify-center p-2 my-auto">
+                                            <div className="w-full max-w-4xl flex justify-between items-center mb-6 px-4">
+                                                <span className="text-2xl md:text-3xl font-bold text-gray-500">문제 {currentIdx + 1} / {questions.length}</span>
+                                                <span className="text-2xl md:text-3xl font-bold text-teal-600">점수: {scores.p1}</span>
+                                            </div>
+
+                                            {/* 1P 질문 박스: 그라데이션 적용으로 보기버튼과 구분 */}
+                                            <div className="bg-gradient-to-br from-amber-100 to-orange-50 dark:from-gray-700 dark:to-gray-800 p-8 md:p-14 rounded-3xl shadow-md mb-8 text-center w-full max-w-4xl border border-orange-200/50">
+                                                <h3 className="text-4xl md:text-5xl lg:text-6xl leading-tight text-gray-900 dark:text-white font-bold">Q. "{currentQ.q}"</h3>
+                                            </div>
+
+                                            {/* 보기 버튼 */}
+                                            <div className="w-full max-w-4xl flex flex-col md:flex-row gap-4 md:gap-6">
+                                                {currentQ.options.map((opt, i) => {
+                                                    let btnStyle = "btn-neumorphic bg-white dark:bg-gray-800";
+                                                    if (feedback.p1) {
+                                                        if (opt === currentQ.a) btnStyle += " btn-correct pressed";
+                                                        else if (opt === selectedOptions.p1) btnStyle += " btn-wrong pressed";
+                                                    }
+
+                                                    return (
+                                                        <button 
+                                                            key={i} 
+                                                            onClick={() => handleAnswer('p1', opt)}
+                                                            className={`flex-1 w-full py-6 md:py-12 text-2xl md:text-4xl rounded-3xl font-bold transition-all duration-100 text-gray-800 dark:text-gray-100 flex items-center justify-center ${btnStyle}`}
+                                                            disabled={isTransitioning}
+                                                        >
+                                                            <span className="mr-3 text-gray-400 font-bold">{i + 1}.</span> {opt}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                } else {
+                                    // 2P Mode - 모바일 스크롤에 맞게 여백 최적화
+                                    return (
+                                        <div className="flex-1 w-full flex flex-col pt-2 md:pt-4">
+                                            
+                                            {/* 상단 줄다리기 영역: 명확하고 슬림한 박스 */}
+                                            <div className="w-full md:w-3/4 mx-auto h-12 md:h-14 bg-white dark:bg-gray-800 rounded-full shadow-inner border border-gray-200 dark:border-gray-700 relative mb-4 overflow-hidden flex items-center shrink-0">
+                                                <div className="absolute inset-0 tug-rope-bg opacity-30"></div>
+                                                <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-gray-400 z-0"></div>
+                                                <div 
+                                                    className="absolute w-10 h-10 md:w-12 md:h-12 bg-teal-400 border-4 border-white rounded-full shadow-md z-10 tug-transition flex items-center justify-center text-lg md:text-xl"
+                                                    style={{ left: `calc(${50 + (tugOfWar * 10)}% - 20px)` }}
+                                                >🚩</div>
+                                            </div>
+
+                                            <div className="flex-1 flex flex-col md:flex-row relative gap-4">
+                                                {/* P1 (블루) */}
+                                                <div className="flex-1 flex flex-col p-4 bg-blue-50/50 dark:bg-blue-900/20 rounded-3xl border-l-8 border-blue-600 relative shadow-sm">
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <span className="text-xl md:text-3xl font-bold text-blue-700 dark:text-blue-300">Blue Team</span>
+                                                        <span className="text-xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">{scores.p1}</span>
+                                                    </div>
+                                                    
+                                                    {/* 질문 박스: 그라데이션 적용 */}
+                                                    <div className="bg-gradient-to-br from-orange-100 to-amber-50 dark:from-gray-700 dark:to-gray-800 p-5 md:p-8 rounded-2xl w-full text-center shadow-sm border border-orange-200/50 mb-4 md:mb-6">
+                                                        <h3 className="text-2xl md:text-4xl leading-tight text-gray-900 dark:text-white font-bold">Q. "{currentQ.q}"</h3>
+                                                    </div>
+                                                    
+                                                    <div className="w-full flex flex-col gap-3 md:gap-4 mt-auto">
+                                                        {currentQ.options.map((opt, i) => {
+                                                            let btnStyle = "btn-neumorphic bg-white dark:bg-gray-800";
+                                                            if (feedback.p1 === 'correct' && opt === currentQ.a) btnStyle += " btn-correct pressed";
+                                                            if (feedback.p1 === 'wrong' && opt === selectedOptions.p1) btnStyle += " btn-wrong pressed";
+                                                            
+                                                            return (
+                                                                <button 
+                                                                    key={`p1-${i}`} 
+                                                                    onClick={() => handleAnswer('p1', opt)}
+                                                                    className={`w-full py-4 md:py-8 text-xl md:text-3xl rounded-xl font-bold transition-all text-gray-800 dark:text-gray-100 flex items-center justify-center ${btnStyle}`}
+                                                                    disabled={feedback.p1 !== null || isTransitioning}
+                                                                >
+                                                                    <span className="mr-3 text-gray-400 font-bold">{i + 1}.</span> {opt}
+                                                                </button>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                                {/* 중앙 라운드 표시 (태블릿/PC에서만 보임) */}
+                                                <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center text-2xl font-bold z-10 border border-gray-200 text-gray-500">
+                                                    {currentIdx + 1}
+                                                </div>
+
+                                                {/* P2 (레드) */}
+                                                <div className="flex-1 flex flex-col p-4 bg-red-50/50 dark:bg-red-900/20 rounded-3xl border-r-8 border-red-600 relative shadow-sm">
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <span className="text-xl md:text-3xl font-bold text-red-600 dark:text-red-300">Red Team</span>
+                                                        <span className="text-xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">{scores.p2}</span>
+                                                    </div>
+                                                    
+                                                    {/* 질문 박스: 그라데이션 적용 */}
+                                                    <div className="bg-gradient-to-br from-orange-100 to-amber-50 dark:from-gray-700 dark:to-gray-800 p-5 md:p-8 rounded-2xl w-full text-center shadow-sm border border-orange-200/50 mb-4 md:mb-6">
+                                                        <h3 className="text-2xl md:text-4xl leading-tight text-gray-900 dark:text-white font-bold">Q. "{currentQ.q}"</h3>
+                                                    </div>
+                                                    
+                                                    <div className="w-full flex flex-col gap-3 md:gap-4 mt-auto">
+                                                        {currentQ.options.map((opt, i) => {
+                                                            let btnStyle = "btn-neumorphic bg-white dark:bg-gray-800";
+                                                            if (feedback.p2 === 'correct' && opt === currentQ.a) btnStyle += " btn-correct pressed";
+                                                            if (feedback.p2 === 'wrong' && opt === selectedOptions.p2) btnStyle += " btn-wrong pressed";
+                                                            
+                                                            return (
+                                                                <button 
+                                                                    key={`p2-${i}`} 
+                                                                    onClick={() => handleAnswer('p2', opt)}
+                                                                    className={`w-full py-4 md:py-8 text-xl md:text-3xl rounded-xl font-bold transition-all text-gray-800 dark:text-gray-100 flex items-center justify-center ${btnStyle}`}
+                                                                    disabled={feedback.p2 !== null || isTransitioning}
+                                                                >
+                                                                    <span className="mr-3 text-gray-400 font-bold">{i + 1}.</span> {opt}
+                                                                </button>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                            })()
+                        )}
+
+                        {/* 화면 4: 결과 */}
+                        {gameState === 'RESULT' && (
+                            <div className="flex-1 w-full flex flex-col items-center justify-center my-auto">
+                                <div className="btn-neumorphic p-10 md:p-16 rounded-3xl text-center w-full max-w-lg animate__animated animate__zoomIn">
+                                    <h2 className="text-4xl md:text-7xl font-bold text-teal-600 mb-6">게임 종료!</h2>
+                                    
+                                    {gameConfig.mode === '2P' ? (
+                                        <>
+                                            <p className="text-2xl md:text-5xl font-bold mb-8 md:mb-10 text-gray-800 dark:text-gray-100">
+                                                {tugOfWar <= -5 ? "🏆 블루 팀 압승!" : tugOfWar >= 5 ? "🏆 레드 팀 압승!" : scores.p1 > scores.p2 ? "🏆 블루 팀 승리!" : scores.p1 < scores.p2 ? "🏆 레드 팀 승리!" : "🤝 무승부!"}
+                                            </p>
+                                            <div className="text-4xl md:text-6xl mb-10 md:mb-12 font-bold text-gray-700 dark:text-gray-200">
+                                                <span className="text-blue-600">{scores.p1}</span> : <span className="text-red-600">{scores.p2}</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <p className="text-2xl md:text-5xl font-bold mb-10 md:mb-12 text-gray-800 dark:text-gray-100">
+                                            총 {gameConfig.count}문제 중 <span className="text-teal-600">{scores.p1 / 10}문제</span> 정답!
+                                        </p>
+                                    )}
+
+                                    <div className="flex flex-col gap-4">
+                                        {gameConfig.mode === '1P' && incorrectNotes.length > 0 && (
+                                            <button onClick={() => setGameState('REVIEW')} className="btn-neumorphic w-full py-4 md:py-5 bg-white text-gray-700 text-xl md:text-2xl rounded-full font-bold">
+                                                📝 오답 노트 보기 ({incorrectNotes.length}개)
+                                            </button>
+                                        )}
+                                        <button onClick={() => setGameState('SETUP')} className="btn-neumorphic w-full py-4 md:py-5 bg-teal-500 text-white text-xl md:text-2xl rounded-full font-bold">
+                                            새 게임 시작
                                         </button>
                                     </div>
                                 </div>
+                            </div>
+                        )}
 
-                                <div>
-                                    <h2 className="text-2xl mb-6 text-center text-gray-600 dark:text-gray-300 font-bold">문제 수</h2>
-                                    <div className="flex gap-4">
-                                        {[10, 20, 30].map(cnt => (
-                                            <button key={cnt} onClick={() => setGameConfig({...gameConfig, count: cnt})} className={`btn-neumorphic flex-1 py-4 text-xl md:text-2xl rounded-2xl font-bold ${gameConfig.count === cnt ? 'bg-teal-500 text-white shadow-[inset_3px_3px_6px_rgba(0,0,0,0.2)]' : 'text-gray-700 dark:text-gray-200'}`}>
-                                                {cnt}문제
-                                            </button>
+                        {/* 화면 5: 오답 노트 */}
+                        {gameState === 'REVIEW' && (
+                            <div className="flex-1 w-full flex flex-col items-center">
+                                <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col h-full mt-4">
+                                    <div className="flex justify-between items-center mb-6 px-2">
+                                        <h2 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100">📝 오답 노트</h2>
+                                        <button onClick={() => setGameState('SETUP')} className="btn-neumorphic px-6 py-3 bg-teal-500 text-white text-lg md:text-xl rounded-full font-bold">
+                                            홈으로
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="flex flex-col gap-6">
+                                        {incorrectNotes.map((note, i) => (
+                                            <div key={i} className="btn-neumorphic p-6 md:p-8 rounded-2xl border-l-8 border-red-500 bg-white dark:bg-gray-800">
+                                                <h3 className="text-2xl md:text-3xl mb-4 text-gray-900 dark:text-white font-bold leading-snug">{i+1}. Q. "{note.q}"</h3>
+                                                <div className="mb-4 text-xl md:text-2xl font-bold text-teal-600">
+                                                    ⭕ 정답: {note.a}
+                                                </div>
+                                                <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-5 rounded-xl font-medium leading-relaxed">
+                                                    💡 {note.desc}
+                                                </p>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
-
-                                <button onClick={startGame} className="btn-neumorphic w-full py-6 mt-4 bg-teal-500 text-white text-3xl rounded-full font-bold shadow-lg">
-                                    게임 시작!
-                                </button>
                             </div>
-                        </div>
-                    )}
-
-                    {/* 화면 2: 카운트다운 */}
-                    {gameState === 'COUNTDOWN' && (
-                        <div className="flex-1 w-full flex items-center justify-center">
-                            <div className="text-center animate__animated animate__zoomIn">
-                                <h2 className="text-[12rem] font-bold text-teal-600 drop-shadow-xl">{countdown > 0 ? countdown : '시작!'}</h2>
-                                <p className="text-4xl text-gray-700 dark:text-gray-200 mt-4">준비하세요!</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 화면 3: 게임 진행 */}
-                    {gameState === 'PLAYING' && (
-                        (() => {
-                            const currentQ = questions[currentIdx];
-
-                            if (gameConfig.mode === '1P') {
-                                return (
-                                    <div className="flex-1 w-full flex flex-col items-center justify-center p-2 mt-4">
-                                        <div className="w-full max-w-4xl flex justify-between items-center mb-6 px-4">
-                                            <span className="text-2xl md:text-3xl font-bold text-gray-500">문제 {currentIdx + 1} / {questions.length}</span>
-                                            <span className="text-2xl md:text-3xl font-bold text-teal-600">점수: {scores.p1}</span>
-                                        </div>
-
-                                        {/* 1P 질문 박스: 그라데이션 적용으로 보기버튼과 확실히 구분 */}
-                                        <div className="bg-gradient-to-br from-orange-100 to-amber-50 dark:from-gray-700 dark:to-gray-800 p-8 md:p-14 rounded-3xl shadow-md mb-8 text-center w-full max-w-4xl border border-orange-200/50">
-                                            <h3 className="text-4xl md:text-5xl lg:text-6xl leading-tight text-gray-900 dark:text-white font-bold">Q. "{currentQ.q}"</h3>
-                                        </div>
-
-                                        {/* 보기 버튼 */}
-                                        <div className="w-full max-w-4xl flex flex-col md:flex-row gap-6">
-                                            {currentQ.options.map((opt, i) => {
-                                                let btnStyle = "btn-neumorphic bg-white dark:bg-gray-800";
-                                                if (feedback.p1) {
-                                                    if (opt === currentQ.a) btnStyle += " btn-correct pressed";
-                                                    else if (opt === selectedOptions.p1) btnStyle += " btn-wrong pressed";
-                                                }
-
-                                                return (
-                                                    <button 
-                                                        key={i} 
-                                                        onClick={() => handleAnswer('p1', opt)}
-                                                        className={`flex-1 w-full py-8 md:py-12 text-3xl md:text-4xl rounded-3xl font-bold transition-all duration-100 text-gray-800 dark:text-gray-100 flex items-center justify-center ${btnStyle}`}
-                                                        disabled={isTransitioning}
-                                                    >
-                                                        <span className="mr-3 text-gray-400 font-bold">{i + 1}.</span> {opt}
-                                                    </button>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-                                );
-                            } else {
-                                // 2P Mode - 여백을 확 줄여 하단 잘림 방지 최적화
-                                return (
-                                    <div className="flex-1 w-full flex flex-col pt-4 max-w-screen-2xl">
-                                        
-                                        {/* 상단 줄다리기 영역: 텍스트를 빼고 깔끔한 바 형태로 변경 */}
-                                        <div className="w-full md:w-3/4 mx-auto h-12 md:h-14 bg-white dark:bg-gray-800 rounded-full shadow-inner border border-gray-200 dark:border-gray-700 relative mb-4 overflow-hidden flex items-center">
-                                            <div className="absolute inset-0 tug-rope-bg opacity-30"></div>
-                                            <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-gray-400 z-0"></div>
-                                            <div 
-                                                className="absolute w-12 h-12 bg-teal-400 border-4 border-white rounded-full shadow-md z-10 tug-transition flex items-center justify-center text-xl"
-                                                style={{ left: `calc(${50 + (tugOfWar * 10)}% - 24px)` }}
-                                            >🚩</div>
-                                        </div>
-
-                                        <div className="flex-1 flex flex-col md:flex-row relative gap-4">
-                                            {/* P1 (블루) */}
-                                            <div className="flex-1 flex flex-col p-4 bg-blue-50/50 dark:bg-blue-900/20 rounded-3xl border-l-8 border-blue-600 relative shadow-sm">
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <span className="text-2xl md:text-3xl font-bold text-blue-700 dark:text-blue-300">Blue Team</span>
-                                                    <span className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">{scores.p1}</span>
-                                                </div>
-                                                
-                                                {/* 질문 박스: 그라데이션 적용 */}
-                                                <div className="bg-gradient-to-br from-orange-100 to-amber-50 dark:from-gray-700 dark:to-gray-800 p-6 md:p-8 rounded-2xl w-full text-center shadow-sm border border-orange-200/50 mb-6">
-                                                    <h3 className="text-2xl md:text-4xl leading-tight text-gray-900 dark:text-white font-bold">Q. "{currentQ.q}"</h3>
-                                                </div>
-                                                
-                                                <div className="w-full flex flex-col gap-4 mt-auto">
-                                                    {currentQ.options.map((opt, i) => {
-                                                        let btnStyle = "btn-neumorphic bg-white dark:bg-gray-800";
-                                                        if (feedback.p1 === 'correct' && opt === currentQ.a) btnStyle += " btn-correct pressed";
-                                                        if (feedback.p1 === 'wrong' && opt === selectedOptions.p1) btnStyle += " btn-wrong pressed";
-                                                        
-                                                        return (
-                                                            <button 
-                                                                key={`p1-${i}`} 
-                                                                onClick={() => handleAnswer('p1', opt)}
-                                                                className={`w-full py-5 md:py-8 text-2xl md:text-3xl rounded-xl font-bold transition-all text-gray-800 dark:text-gray-100 flex items-center justify-center ${btnStyle}`}
-                                                                disabled={feedback.p1 !== null || isTransitioning}
-                                                            >
-                                                                <span className="mr-3 text-gray-400 font-bold">{i + 1}.</span> {opt}
-                                                            </button>
-                                                        )
-                                                    })}
-                                                </div>
-                                            </div>
-
-                                            {/* 중앙 라운드 표시 */}
-                                            <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center text-2xl font-bold z-10 border border-gray-200 text-gray-500">
-                                                {currentIdx + 1}
-                                            </div>
-
-                                            {/* P2 (레드) */}
-                                            <div className="flex-1 flex flex-col p-4 bg-red-50/50 dark:bg-red-900/20 rounded-3xl border-r-8 border-red-600 relative shadow-sm">
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <span className="text-2xl md:text-3xl font-bold text-red-600 dark:text-red-300">Red Team</span>
-                                                    <span className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">{scores.p2}</span>
-                                                </div>
-                                                
-                                                {/* 질문 박스: 그라데이션 적용 */}
-                                                <div className="bg-gradient-to-br from-orange-100 to-amber-50 dark:from-gray-700 dark:to-gray-800 p-6 md:p-8 rounded-2xl w-full text-center shadow-sm border border-orange-200/50 mb-6">
-                                                    <h3 className="text-2xl md:text-4xl leading-tight text-gray-900 dark:text-white font-bold">Q. "{currentQ.q}"</h3>
-                                                </div>
-                                                
-                                                <div className="w-full flex flex-col gap-4 mt-auto">
-                                                    {currentQ.options.map((opt, i) => {
-                                                        let btnStyle = "btn-neumorphic bg-white dark:bg-gray-800";
-                                                        if (feedback.p2 === 'correct' && opt === currentQ.a) btnStyle += " btn-correct pressed";
-                                                        if (feedback.p2 === 'wrong' && opt === selectedOptions.p2) btnStyle += " btn-wrong pressed";
-                                                        
-                                                        return (
-                                                            <button 
-                                                                key={`p2-${i}`} 
-                                                                onClick={() => handleAnswer('p2', opt)}
-                                                                className={`w-full py-5 md:py-8 text-2xl md:text-3xl rounded-xl font-bold transition-all text-gray-800 dark:text-gray-100 flex items-center justify-center ${btnStyle}`}
-                                                                disabled={feedback.p2 !== null || isTransitioning}
-                                                            >
-                                                                <span className="mr-3 text-gray-400 font-bold">{i + 1}.</span> {opt}
-                                                            </button>
-                                                        )
-                                                    })}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            }
-                        })()
-                    )}
-
-                    {/* 화면 4: 결과 */}
-                    {gameState === 'RESULT' && (
-                        <div className="flex-1 w-full flex items-center justify-center">
-                            <div className="btn-neumorphic p-12 md:p-16 rounded-3xl text-center w-full max-w-lg animate__animated animate__zoomIn">
-                                <h2 className="text-5xl md:text-7xl font-bold text-teal-600 mb-6">게임 종료!</h2>
-                                
-                                {gameConfig.mode === '2P' ? (
-                                    <>
-                                        <p className="text-3xl md:text-5xl font-bold mb-10 text-gray-800 dark:text-gray-100">
-                                            {tugOfWar <= -5 ? "🏆 블루 팀 압승!" : tugOfWar >= 5 ? "🏆 레드 팀 압승!" : scores.p1 > scores.p2 ? "🏆 블루 팀 승리!" : scores.p1 < scores.p2 ? "🏆 레드 팀 승리!" : "🤝 무승부!"}
-                                        </p>
-                                        <div className="text-4xl md:text-6xl mb-12 font-bold text-gray-700 dark:text-gray-200">
-                                            <span className="text-blue-600">{scores.p1}</span> : <span className="text-red-600">{scores.p2}</span>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <p className="text-3xl md:text-5xl font-bold mb-12 text-gray-800 dark:text-gray-100">
-                                        총 {gameConfig.count}문제 중 <span className="text-teal-600">{scores.p1 / 10}문제</span> 정답!
-                                    </p>
-                                )}
-
-                                <div className="flex flex-col md:flex-row gap-6 justify-center">
-                                    {gameConfig.mode === '1P' && incorrectNotes.length > 0 && (
-                                        <button onClick={() => setGameState('REVIEW')} className="btn-neumorphic px-8 py-5 bg-white text-gray-700 text-2xl rounded-full font-bold">
-                                            📝 오답 노트 ({incorrectNotes.length}개)
-                                        </button>
-                                    )}
-                                    <button onClick={() => setGameState('SETUP')} className="btn-neumorphic px-8 py-5 bg-teal-500 text-white text-2xl rounded-full font-bold">
-                                        새 게임 시작
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 화면 5: 오답 노트 */}
-                    {gameState === 'REVIEW' && (
-                        <div className="flex-1 w-full flex flex-col items-center p-4 overflow-y-auto mt-6">
-                            <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col h-full">
-                                <div className="flex justify-between items-center mb-8">
-                                    <h2 className="text-4xl font-bold text-gray-800 dark:text-gray-100">📝 오답 노트</h2>
-                                    <button onClick={() => setGameState('SETUP')} className="btn-neumorphic px-6 py-3 bg-teal-500 text-white text-xl rounded-full font-bold">
-                                        홈으로
-                                    </button>
-                                </div>
-                                
-                                <div className="flex flex-col gap-6 pb-12">
-                                    {incorrectNotes.map((note, i) => (
-                                        <div key={i} className="btn-neumorphic p-6 md:p-8 rounded-2xl border-l-8 border-red-500 bg-white dark:bg-gray-800">
-                                            <h3 className="text-2xl md:text-3xl mb-4 text-gray-900 dark:text-white font-bold leading-snug">{i+1}. Q. "{note.q}"</h3>
-                                            <div className="mb-4 text-xl md:text-2xl font-bold text-teal-600">
-                                                ⭕ 정답: {note.a}
-                                            </div>
-                                            <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-5 rounded-xl font-medium leading-relaxed">
-                                                💡 {note.desc}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             );
         };
