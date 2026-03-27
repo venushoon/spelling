@@ -77,7 +77,7 @@
         /* 줄다리기 게이지 트랜지션 */
         .tug-transition { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
 
-        /* 역동적인 줄다리기 배경 이미지 및 위치 이동 (사용자 이미지 기반) */
+        /* 역동적인 줄다리기 배경 이미지 */
         .tug-rope-bg {
             background-image: url('https://replicate.delivery/pbxt/G3t7N9fWp3d8bL8H3bJ6R5b4R5R6R7R8R9R0R1R2/image_1.png');
             background-size: cover;
@@ -93,7 +93,6 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // 풍부한 맞춤법 데이터 (총 35개)
         const ALL_QUIZ_DATA = [
             { q: "오늘이 ( )이야?", options: ["며칠", "몇일"], a: "며칠", desc: "'몇일'이라는 단어는 없습니다. 항상 '며칠'로 씁니다." },
             { q: "이제 ( )?", options: ["어떡해", "어떻해"], a: "어떡해", desc: "'어떠하게 해'가 줄어든 말로 '어떡해'가 맞습니다." },
@@ -132,15 +131,10 @@
             { q: "은혜를 ( )", options: ["대갚음하다", "되갚음하다"], a: "대갚음하다", desc: "남에게 입은 은혜나 원한을 그대로 갚는 것은 '대갚음'입니다." }
         ];
 
-        // 유틸리티: 배열 섞기
         const shuffle = (array) => [...array].sort(() => Math.random() - 0.5);
 
-        // 상단 바 컴포넌트 (홈, 다크모드)
         const TopBar = ({ gameState, setGameState, darkMode, setDarkMode }) => {
-            const handleHome = () => {
-                setGameState('SETUP');
-            };
-
+            const handleHome = () => setGameState('SETUP');
             const isSetup = gameState === 'SETUP';
 
             return (
@@ -157,7 +151,6 @@
             );
         };
 
-        // 축하 메시지 팝업 컴포넌트
         const CongratulationPopup = ({ show, onHome }) => {
             if (!show) return null;
             return (
@@ -176,30 +169,27 @@
 
         const App = () => {
             const [darkMode, setDarkMode] = useState(false);
-            const [gameState, setGameState] = useState('SETUP'); // SETUP, COUNTDOWN, PLAYING, RESULT, REVIEW
+            const [gameState, setGameState] = useState('SETUP'); 
             const [gameConfig, setGameConfig] = useState({ mode: '1P', count: 10 });
             
             const [questions, setQuestions] = useState([]);
             const [currentIdx, setCurrentIdx] = useState(0);
             const [scores, setScores] = useState({ p1: 0, p2: 0 });
-            const [tugOfWar, setTugOfWar] = useState(0); // -5 (P1 승리) ~ +5 (P2 승리) 콜드게임 조건
+            const [tugOfWar, setTugOfWar] = useState(0); 
             const [incorrectNotes, setIncorrectNotes] = useState([]);
-            const [feedback, setFeedback] = useState({ p1: null, p2: null }); // null, 'correct', 'wrong'
+            const [feedback, setFeedback] = useState({ p1: null, p2: null }); 
             const [selectedOptions, setSelectedOptions] = useState({ p1: null, p2: null });
             const [countdown, setCountdown] = useState(3);
             const [isTransitioning, setIsTransitioning] = useState(false);
             const [showCongratulation, setShowCongratulation] = useState(false);
 
-            // 다크모드 제어
             useEffect(() => {
                 if (darkMode) document.documentElement.classList.add('dark');
                 else document.documentElement.classList.remove('dark');
             }, [darkMode]);
 
-            // 게임 시작 (설정 완료)
             const startGame = () => {
                 const shuffled = shuffle(ALL_QUIZ_DATA).slice(0, gameConfig.count);
-                // 보기 항목도 랜덤으로 섞기
                 const finalQuestions = shuffled.map(q => ({ ...q, options: shuffle(q.options) }));
                 
                 setQuestions(finalQuestions);
@@ -220,7 +210,6 @@
                 }
             };
 
-            // 2인 모드 카운트다운
             useEffect(() => {
                 if (gameState === 'COUNTDOWN') {
                     if (countdown > 0) {
@@ -232,9 +221,8 @@
                 }
             }, [gameState, countdown]);
 
-            // 정답 처리 로직
             const handleAnswer = (player, option) => {
-                if (isTransitioning || feedback[player] !== null) return; // 이미 대기중이거나, 해당 플레이어가 이미 답을 누른 경우 무시
+                if (isTransitioning || feedback[player] !== null) return; 
 
                 const currentQ = questions[currentIdx];
                 const isCorrect = option === currentQ.a;
@@ -242,7 +230,6 @@
                 setSelectedOptions(prev => ({ ...prev, [player]: option }));
 
                 if (gameConfig.mode === '1P') {
-                    // 1인 학습 모드
                     if (isCorrect) {
                         setFeedback({ p1: 'correct', p2: null });
                         setScores(prev => ({ ...prev, p1: prev.p1 + 10 }));
@@ -253,29 +240,22 @@
                         moveToNext(1200);
                     }
                 } else {
-                    // 2인 경쟁 모드 (선착순 또는 기회 박탈)
                     if (isCorrect) {
-                        // 정답을 맞힌 사람
                         setFeedback(prev => ({ ...prev, [player]: 'correct' }));
                         setScores(prev => ({ ...prev, [player]: prev[player] + 10 }));
                         
-                        // 줄다리기 게이지 이동: p1 정답시 -1(왼쪽), p2 정답시 +1(오른쪽)
                         const tugChange = player === 'p1' ? -1 : 1;
                         const newTug = tugOfWar + tugChange;
                         setTugOfWar(newTug);
 
-                        // 콜드게임 체크 (차이가 5가 되면 즉시 종료)
                         if (Math.abs(newTug) >= 5) {
                             setTimeout(() => setGameState('RESULT'), 1500);
                             setIsTransitioning(true);
                         } else {
-                            moveToNext(0); // 2인 모드 정답 시 즉시 다음 문제로
+                            moveToNext(0); 
                         }
                     } else {
-                        // 오답을 누른 경우: 해당 플레이어 버튼 비활성화, 상대방 기회 유지
                         setFeedback(prev => ({ ...prev, [player]: 'wrong' }));
-                        
-                        // 만약 상대방도 이미 틀렸다면(둘 다 틀림), 다음 문제로 넘어감
                         const otherPlayer = player === 'p1' ? 'p2' : 'p1';
                         if (feedback[otherPlayer] === 'wrong') {
                             moveToNext(1200);
@@ -293,7 +273,6 @@
                         setSelectedOptions({ p1: null, p2: null });
                         setIsTransitioning(false);
                     } else {
-                        // 결과 화면으로 전환하기 전에 만점 확인
                         if (gameConfig.mode === '1P' && scores.p1 + (feedback.p1 === 'correct' ? 10 : 0) === gameConfig.count * 10) {
                              setShowCongratulation(true);
                         }
@@ -302,19 +281,11 @@
                 }, delay);
             };
 
-            // 처음으로 돌아가기
-            const handleHome = () => {
-                setGameState('SETUP');
-            };
-
-            // ================= 화면 렌더링 =================
+            const handleHome = () => setGameState('SETUP');
 
             return (
                 <div className="min-h-screen p-4 pt-24 relative overflow-hidden">
-                    {/* 상단 바 (홈, 다크모드 토글) */}
                     <TopBar gameState={gameState} setGameState={setGameState} darkMode={darkMode} setDarkMode={setDarkMode} />
-
-                    {/* 축하 메시지 팝업 (1인 모드 만점 시) */}
                     <CongratulationPopup show={showCongratulation} onHome={handleHome} />
 
                     {gameState === 'SETUP' && (
@@ -383,7 +354,7 @@
                                             {currentQ.options.map((opt, i) => {
                                                 let btnStyle = "btn-neumorphic";
                                                 if (feedback.p1) {
-                                                    if (opt === currentQ.a) btnStyle += " btn-correctpressed";
+                                                    if (opt === currentQ.a) btnStyle += " btn-correct pressed";
                                                     else if (opt === selectedOptions.p1) btnStyle += " btn-wrong pressed";
                                                 }
 
@@ -535,38 +506,36 @@
                                 </div>
                             </div>
                         </div>
-                    );
-                }
+                    )}
 
-                {gameState === 'REVIEW' && (
-                    <div className="min-h-full p-4 md:p-8 flex flex-col">
-                        <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col h-full">
-                            <div className="flex justify-between items-center mb-8 h-20">
-                                <h2 className="text-4xl md:text-5xl font-bold text-gray-800 dark:text-gray-100">📝 오답 노트</h2>
-                                <button onClick={handleHome} className="btn-neumorphic px-6 py-3 bg-mint dark:bg-mint text-white text-2xl rounded-full font-bold tag-rope shadow-nm-flat active:shadow-nm-flat-active transition-all duration-200">
-                                    홈으로
-                                </button>
-                            </div>
-                            
-                            <div className="flex-1 overflow-y-auto pr-4 space-y-6" style={{ maxHeight: 'calc(100vh - 160px)' }}>
-                                {incorrectNotes.map((note, i) => (
-                                    <div key={i} className="btn-neumorphic bg-nm-bg dark:bg-nm-bg-dark p-6 md:p-8 rounded-2xl shadow-nm-flat dark:shadow-nm-flat-dark border-l-8 border-red-500 animate__animated animate__fadeInUp">
-                                        <h3 className="text-2xl md:text-3xl mb-4 text-gray-900 dark:text-gray-100 font-bold leading-snug">{i+1}. Q. "{note.q}"</h3>
-                                        <div className="flex items-center gap-4 mb-5 text-xl md:text-2xl tag-rope">
-                                            <span className="text-correctpressed dark:text-correct font-bold">⭕ 정답: {note.a}</span>
+                    {gameState === 'REVIEW' && (
+                        <div className="min-h-full p-4 md:p-8 flex flex-col">
+                            <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col h-full">
+                                <div className="flex justify-between items-center mb-8 h-20">
+                                    <h2 className="text-4xl md:text-5xl font-bold text-gray-800 dark:text-gray-100">📝 오답 노트</h2>
+                                    <button onClick={handleHome} className="btn-neumorphic px-6 py-3 bg-mint dark:bg-mint text-white text-2xl rounded-full font-bold tag-rope shadow-nm-flat active:shadow-nm-flat-active transition-all duration-200">
+                                        홈으로
+                                    </button>
+                                </div>
+                                
+                                <div className="flex-1 overflow-y-auto pr-4 space-y-6" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+                                    {incorrectNotes.map((note, i) => (
+                                        <div key={i} className="btn-neumorphic bg-nm-bg dark:bg-nm-bg-dark p-6 md:p-8 rounded-2xl shadow-nm-flat dark:shadow-nm-flat-dark border-l-8 border-red-500 animate__animated animate__fadeInUp">
+                                            <h3 className="text-2xl md:text-3xl mb-4 text-gray-900 dark:text-gray-100 font-bold leading-snug">{i+1}. Q. "{note.q}"</h3>
+                                            <div className="flex items-center gap-4 mb-5 text-xl md:text-2xl tag-rope">
+                                                <span className="text-green-500 dark:text-green-400 font-bold">⭕ 정답: {note.a}</span>
+                                            </div>
+                                            <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300 bg-mint/10 dark:bg-mint/10 p-5 rounded-xl border border-mint dark:border-mint font-medium leading-relaxed shadow-nm-flat active:shadow-nm-flat-active">
+                                                💡 {note.desc}
+                                            </p>
                                         </div>
-                                        <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300 bg-mint/10 dark:bg-mint/10 p-5 rounded-xl border border-mint dark:border-mint font-medium leading-relaxed shadow-nm-flat active:shadow-nm-flat-active">
-                                            💡 {note.desc}
-                                        </p>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                );
-            }
-
-            return null;
+                    )}
+                </div>
+            );
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
